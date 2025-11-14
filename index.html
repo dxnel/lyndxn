@@ -8,48 +8,51 @@
 </head>
 <body>
 <header class="site-header">
-<div class="container header-inner">
-<div class="brand">
-<a href="#" id="home-link">LYNDXN</a>
-<span class="tag">singles</span>
-</div>
-<nav class="nav-right">
-<a href="#" id="admin-link">Admin</a>
-</nav>
-</div>
+  <div class="container header-inner">
+    <div class="brand">
+      <a href="#" id="home-link">LYNDXN</a>
+    </div>
+    <nav class="nav-right">
+      <div id="admin-icon" title="Admin ⚙️" style="cursor:pointer;">⚙️</div>
+    </nav>
+  </div>
 </header>
 
-<main class="container" id="app">
-<!-- main view injected by JS -->
-</main>
+<main class="container" id="app"></main>
 
 <footer class="site-footer">
-<div class="container">© <span id="year"></span> LYNDXN — DIY releases</div>
+  <div class="container footer-inner">
+    <div>© <span id="year"></span> LYNDXN</div>
+    <div class="socials">
+      <a href="https://spotify.com" target="_blank">🎵</a>
+      <a href="https://soundcloud.com" target="_blank">☁️</a>
+      <a href="https://youtube.com" target="_blank">▶️</a>
+    </div>
+  </div>
 </footer>
 
-<!-- audio player dock -->
 <div id="player-dock" aria-live="polite">
-<div class="player-inner container">
-<div class="player-left">
-<img id="dock-cover" src="" alt="" />
-<div class="player-meta">
-<div id="dock-title">—</div>
-<div id="dock-sub">—</div>
-</div>
-</div>
-<div class="player-controls">
-<button id="btn-prev" title="Previous">◀◀</button>
-<button id="btn-play" title="Play/Pause">▶</button>
-<button id="btn-next" title="Next">▶▶</button>
-<div class="time">
-<span id="cur-time">0:00</span> / <span id="dur-time">0:00</span>
-</div>
-<input id="seek" type="range" min="0" max="100" value="0" />
-</div>
-<div class="player-right">
-<a id="download-link" download>Download</a>
-</div>
-</div>
+  <div class="player-inner container">
+    <div class="player-left">
+      <img id="dock-cover" src="" alt="Album cover" />
+      <div class="player-meta">
+        <div id="dock-title">—</div>
+        <div id="dock-sub">—</div>
+      </div>
+    </div>
+    <div class="player-controls">
+      <button id="btn-prev" title="Previous">◀◀</button>
+      <button id="btn-play" title="Play/Pause">▶</button>
+      <button id="btn-next" title="Next">▶▶</button>
+      <div class="time">
+        <span id="cur-time">0:00</span> / <span id="dur-time">0:00</span>
+      </div>
+      <input id="seek" type="range" min="0" max="100" value="0" step="0.1" />
+    </div>
+    <div class="player-right">
+      <a id="download-link" download>Download</a>
+    </div>
+  </div>
 </div>
 
 <script src="./script.js"></script>
