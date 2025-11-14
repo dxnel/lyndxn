@@ -50,8 +50,8 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   top: 0;
   z-index: 50;
   background: rgba(10, 10, 10, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px) saturate(180%); /* Garde un blur plus prononcé pour l'effet glassmorphism */
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-bottom: 1px solid var(--border);
   height: 70px;
   display: flex;
@@ -123,13 +123,11 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   position: relative;
   aspect-ratio: 1;
   background: var(--surface);
-  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
-  transition: transform 0.3s var(--ease-out), box-shadow 0.3s;
+  transition: transform 0.3s var(--ease-out); /* Supprimé box-shadow */
 }
 
 .card:hover .card-image-wrap {
   transform: translateY(-6px);
-  box-shadow: 0 20px 40px -10px rgba(0,0,0,0.6);
 }
 
 .card img {
@@ -148,6 +146,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   font-size: 16px;
   letter-spacing: -0.3px;
   color: var(--paper);
+  margin-top: 16px; /* Ajoute un espace de 16px au-dessus du titre */
 }
 
 .card .meta {
@@ -168,7 +167,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
 .release-hero img {
   width: 100%;
   border-radius: var(--radius-lg);
-  box-shadow: 0 20px 50px -20px rgba(0,0,0,0.7);
+  /* box-shadow: 0 20px 50px -20px rgba(0,0,0,0.7); */ /* Supprimé box-shadow */
 }
 
 .release-details {
@@ -257,7 +256,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   border-radius: var(--radius-lg);
   width: 95%;
   max-width: 800px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  /* box-shadow: 0 20px 40px rgba(0,0,0,0.4); */ /* Supprimé box-shadow */
   overflow: hidden;
 }
 
@@ -326,7 +325,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   background: var(--paper) !important;
   color: var(--bg) !important;
   opacity: 1 !important;
-  box-shadow: 0 4px 12px rgba(255,255,255,0.2);
+  /* box-shadow: 0 4px 12px rgba(255,255,255,0.2); */ /* Supprimé box-shadow */
 }
 
 .scrubber {
@@ -345,7 +344,8 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
 input[type=range] {
   -webkit-appearance: none;
   width: 100%;
-  background: transparent;
+  background: transparent; /* Laissé transparent car le fond est géré par linear-gradient */
+  outline: none; /* Enlève l'outline par défaut au focus */
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -353,16 +353,19 @@ input[type=range]::-webkit-slider-thumb {
   border-radius: 50%;
   background: #fff;
   margin-top: -4px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  /* box-shadow: 0 2px 6px rgba(0,0,0,0.3); */ /* Supprimé box-shadow */
   cursor: pointer;
   transition: transform 0.1s;
 }
 input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 input[type=range]::-webkit-slider-runnable-track {
   width: 100%; height: 4px;
-  background: #444;
+  background: #444; /* Fond gris de la piste */
   border-radius: 2px;
 }
+
+/* La partie remplie du slider est désormais gérée par JavaScript directement sur l'élément input */
+
 
 .player-right {
   width: 25%;
