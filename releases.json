@@ -1,22 +1,13 @@
 [
-{
-"slug": "summer-dust",
-"title": "Summer Dust",
-"date": "2025-01-12",
-"cover": "covers/summer-dust.jpg",
-"audio": "tracks/summer-dust.mp3",
-"description": "Indie new-wave single - minimal vibe.",
-"credits": "Artist: LYNDXN — Prod & Mix",
-"lyrics": ""
-},
-{
-"slug": "too-lost",
-"title": "Too Lost",
-"date": "2025-11-09",
-"cover": "covers/too-lost.jpg",
-"audio": "tracks/too-lost.mp3",
-"description": "Second single, darker grooves.",
-"credits": "Artist: LYNDXN — Prod",
-"lyrics": ""
-}
+
+  {
+    "slug": "yzote-meraki",
+    "title": "Yzote Meraki",
+    "date": "2025-11-15",
+    "cover": "./covers/yzote-meraki.jpg",
+    "audio": "./tracks/Yzote_Meraki.wav",
+    "description": "Latest single – smooth atmospheric vibes.",
+    "credits": "Artist: LYNDXN – Prod & Mix",
+    "lyrics": ""
+  }
 ]
