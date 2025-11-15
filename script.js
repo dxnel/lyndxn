@@ -187,7 +187,7 @@ function renderRelease(slug) {
       
       <div style="display:flex; gap:12px; margin-bottom:32px;">
          <button class="btn" id="play-release-btn">${SVG_PLAY} Play</button>
-         <a class="btn secondary" href="${r.audio}" download="${r.slug}.mp3">Download</a>
+         <a class="btn secondary" href="${r.audio}" download="${r.slug}.wav">Download</a>
       </div>
 
       <p class="release-desc">${desc || '...'}</p>
@@ -361,7 +361,7 @@ function playRelease(r) {
       dockTitle.textContent = r.title; 
       dockSub.textContent = r.credits;
       downloadLink.href = r.audio; 
-      downloadLink.download = `${r.slug}.mp3`;
+      downloadLink.download = `${r.slug}.wav`;
       audio.play();
       isPlaying = true;
   } else {
