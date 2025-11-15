@@ -76,7 +76,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   color: var(--muted);
   transition: color 0.2s, transform 0.2s;
   padding: 8px;
-  cursor: pointer; /* Curseur admin */
+  cursor: pointer;
 }
 .nav-right div:hover {
   color: var(--accent);
@@ -104,11 +104,12 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
 /* --- Home: Header & Tabs --- */
 .home-header {
   display: flex;
+  flex-wrap: wrap; /* Permet le wrapping */
   justify-content: space-between;
   align-items: center;
   padding-top: 40px;
   margin-bottom: 32px;
-  gap: 20px; /* Espace pour les nouveaux boutons */
+  gap: 20px;
 }
 
 .home-header h2 { 
@@ -116,13 +117,15 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   font-size: 24px;
   letter-spacing: -0.5px;
   white-space: nowrap;
+  order: 1;
 }
 
 .tabs { 
   display: flex; 
   gap: 8px; 
   justify-content: flex-start;
-  flex: 1; /* Prend l'espace du milieu */
+  order: 3; /* Passe en 3ème position (nouvelle ligne) */
+  flex-basis: 100%;
 }
 
 .tab-btn {
@@ -146,6 +149,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
 .view-toggle {
   display: flex;
   gap: 8px;
+  order: 2; /* Reste sur la première ligne */
 }
 .view-btn {
   background: var(--surface);
@@ -180,7 +184,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   transition: opacity 0.4s var(--ease-out), transform 0.4s var(--ease-out);
   will-change: opacity, transform;
 }
-.grid-container.fading { /* Pour l'anim de changement de vue */
+.grid-container.fading {
   opacity: 0;
   transition: opacity 0.15s ease-out;
 }
@@ -192,7 +196,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
 /* --- Grid / Home --- */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 32px;
 }
 
@@ -244,11 +248,17 @@ a.card-link {
   font-size: 16px;
   letter-spacing: -0.3px;
   color: var(--paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card .meta {
   font-size: 13px;
   color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Vue Liste */
@@ -282,30 +292,37 @@ a.card-link {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 .list-item-meta .title {
   font-weight: 600;
   font-size: 15px;
   color: var(--paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .list-item-meta .meta {
   font-size: 13px;
   color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .list-item-date {
   font-size: 13px;
   color: var(--muted);
-  width: 85px; /* Espace pour JJ-MM-YYYY */
+  width: 85px;
   text-align: right;
   flex-shrink: 0;
-  font-variant-numeric: tabular-nums; /* Garde les chiffres alignés */
+  font-variant-numeric: tabular-nums;
 }
 
 
 /* --- Release Page --- */
 .release-hero {
   display: grid;
-  grid-template-columns: 350px 1fr;
+  grid-template-columns: 320px 1fr;
   gap: 48px;
   align-items: start;
 }
@@ -318,7 +335,7 @@ a.card-link {
 .release-details {
   padding-top: 0;
 }
-/* --- Style du lien retour --- */
+/* Style du lien retour */
 .back-link {
   display: inline-block;
   font-size: 14px;
@@ -331,7 +348,7 @@ a.card-link {
   color: var(--paper);
 }
 
-/* --- Header de la page Release --- */
+/* Header de la page Release */
 .page-header {
   padding-top: 40px;
   margin-bottom: 32px;
@@ -349,7 +366,7 @@ a.card-link {
   font-size: 18px;
   color: var(--muted);
   font-weight: 500;
-  margin-bottom: 32px; /* Marge restaurée */
+  margin-bottom: 32px;
 }
 
 /* Style de la description */
@@ -363,8 +380,8 @@ a.card-link {
 
 /* Date de release (sous la description) */
 .release-date-bottom {
-  margin-top: -16px; /* Remonte dans la marge de la description */
-  margin-bottom: 32px; /* Garde l'espace avant les paroles */
+  margin-top: -16px;
+  margin-bottom: 32px;
   font-size: 14px;
   color: var(--muted);
   font-style: italic;
@@ -445,6 +462,7 @@ a.card-link {
   gap: 16px;
   align-items: center;
   width: 25%;
+  min-width: 0;
 }
 
 #dock-cover {
@@ -452,6 +470,7 @@ a.card-link {
   height: 48px;
   border-radius: 8px;
   background: #333;
+  flex-shrink: 0;
 }
 
 .player-meta {
@@ -460,8 +479,21 @@ a.card-link {
   overflow: hidden;
 }
 
-#dock-title { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-#dock-sub { font-size: 12px; color: var(--muted); margin-top: 2px;}
+#dock-title { 
+  font-weight: 600; 
+  font-size: 14px; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis;
+}
+#dock-sub { 
+  font-size: 12px; 
+  color: var(--muted); 
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .player-controls {
   flex: 1;
@@ -518,8 +550,8 @@ input[type=range] {
   width: 100%;
   background: transparent;
   outline: none;
-  cursor: pointer; /* Ajout pointer slider */
-  transition: background 0.2s ease-out; /* "Glide" plus rapide */
+  cursor: pointer;
+  transition: background 0.2s ease-out;
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -629,7 +661,11 @@ textarea.jsonedit:focus {
   opacity: 1;
 }
 
-.modal h2 { margin: 0 0 16px 0; }
+.modal h2 { 
+  margin: 0 0 16px 0; 
+  font-size: 20px;
+  letter-spacing: -0.3px;
+}
 .modal p { margin: 0 0 20px 0; color: var(--muted); line-height: 1.5; }
 
 #modal-input-area { margin-bottom: 20px; }
@@ -659,48 +695,83 @@ textarea.jsonedit:focus {
 }
 
 
-/* --- Mobile --- */
+/* ======================= */
+/* =   MEDIA QUERY MOBILE  = */
+/* ======================= */
 @media(max-width: 768px) {
-  /* NOUVEAU: Padding mobile */
   .container {
     padding: 0 18px;
   }
-
-  .home-header { 
-    flex-wrap: wrap;
-  }
-  .tabs {
-    order: 2;
-    flex-basis: 100%;
-    justify-content: center;
-    margin-top: 16px;
-  }
-  .home-header h2 { order: 1; }
-  .view-toggle { order: 1; }
   
-  /* NOUVEAU: Grille mobile à 2 colonnes */
+  /* MODIFIÉ : Layout du header mobile supprimé */
+  /* Les styles desktop (flex-wrap) sont maintenant hérités */
+  /* Assure que les onglets ne sont pas centrés */
+  .tabs {
+    justify-content: flex-start;
+  }
+  
   .grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 24px;
   }
-
-  .release-hero { grid-template-columns: 1fr; gap: 24px; }
-  .release-title { font-size: 32px; }
   
+  .card a.card-link {
+    gap: 12px;
+  }
+  .card .title {
+    font-size: 14px;
+  }
+  .card .meta {
+    font-size: 12px;
+  }
+
+  /* Layout page Release mobile */
+  .release-hero { 
+    display: flex; /* Reviens à flex pour la colonne */
+    flex-direction: column; 
+    gap: 24px; 
+    align-items: center; /* Centre les éléments */
+    /* Supprime grid-template-columns */
+  }
+  .release-hero img {
+    width: 100%;
+    max-width: 350px; /* Limite la taille de la cover */
+    align-self: center; /* Centre l'image */
+    height: auto;
+  }
+  .release-details {
+    text-align: center; /* Centre le texte */
+    padding-top: 0;
+  }
+  
+  .release-title { font-size: 32px; }
+  .release-artist { font-size: 16px; margin-bottom: 24px; }
+  .release-desc { font-size: 14px; max-width: none; }
+  .release-date-bottom { text-align: center; }
+  
+  .release-details > div:nth-child(3) { /* Cible le conteneur des boutons Play/Download */
+    justify-content: center; /* Centre les boutons */
+  }
+
   /* Player */
   .player-inner { flex-direction: column; padding: 16px; gap: 16px; }
-  .player-left, .player-right, .player-controls { width: 100%; justify-content: center; text-align: center; }
-  .player-left { justify-content: flex-start; }
+  .player-left, .player-right, .player-controls { width: 100%; justify-content: center; }
+  .player-left { 
+    justify-content: flex-start;
+    text-align: left;
+  }
+  .player-meta {
+    text-align: left;
+  }
   
-  /* MODIFIÉ: Player flottant */
   #player-dock { 
     bottom: 12px; 
   }
   .glass-panel { 
-    width: 95%; /* Largeur réduite */
-    border-radius: var(--radius-md); /* Tous les coins arrondis (16px) */
-    max-width: 800px; /* Respecte la largeur max */
-    border-bottom: 1px solid var(--border); /* Rétablit la bordure */
+    width: 95%;
+    border-radius: var(--radius-md);
+    max-width: 800px;
+    border-bottom: 1px solid var(--border);
   }
   
   .list-item-date { display: none; }

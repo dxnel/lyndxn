@@ -36,21 +36,21 @@ const SVG_LIST = '<svg fill="currentColor" viewBox="0 0 16 16"><path d="M2 3.5A.
 
 
 //--- UTIL ---
+// MODIFIÉ : Correction de la syntaxe de ' (remplacé ''' par '&#39;')
 const escapeHtml = s => s || s === 0 ? s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) : '';
 const formatTime = s => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 const downloadFile = (name, text) => { const blob = new Blob([text], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
 
-// NOUVELLE FONCTION DATE
 const formatDate = (dateString) => {
     try {
         const date = new Date(dateString);
         const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0'); // +1 car les mois sont 0-indexés
+        const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
         return `${day}-${month}-${year}`;
     } catch (e) {
         console.error("Erreur formatage date:", e);
-        return dateString; // Retourne la date brute en cas d'erreur
+        return dateString;
     }
 };
 
@@ -98,14 +98,14 @@ async function renderHome() {
   app.innerHTML = `
     <div class="home-header">
       <h2>Library</h2>
+      <div class="view-toggle" id="view-toggle">
+        <button class="view-btn ${currentView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid View">${SVG_GRID}</button>
+        <button class="view-btn ${currentView === 'list' ? 'active' : ''}" data-view="list" title="List View">${SVG_LIST}</button>
+      </div>
       <div class="tabs" id="sort-tabs">
         <button class="tab-btn active" data-sort="date">Recent</button>
         <button class="tab-btn" data-sort="title">Name (A-Z)</button>
         <button class="tab-btn" data-sort="artist">Artist (A-Z)</button>
-      </div>
-      <div class="view-toggle" id="view-toggle">
-        <button class="view-btn ${currentView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid View">${SVG_GRID}</button>
-        <button class="view-btn ${currentView === 'list' ? 'active' : ''}" data-view="list" title="List View">${SVG_LIST}</button>
       </div>
     </div>
     <div class="grid-container" id="grid-container">
@@ -116,7 +116,6 @@ async function renderHome() {
   
   currentSort = 'date';
   
-  // Animation d'apparition LENTE
   const gridContainer = document.getElementById('grid-container');
   gridContainer.classList.add('grid-page-enter');
   renderGrid();
@@ -127,7 +126,6 @@ async function renderHome() {
   gridContainer.classList.remove('grid-page-enter');
 }
 
-// Tri : Instantané
 function handleSortClick(e) {
     const btn = e.target.closest('.tab-btn');
     if (!btn) return;
@@ -142,11 +140,9 @@ function handleSortClick(e) {
     });
     btn.classList.add('active');
     
-    // Rendu instantané
     renderGrid();
 }
 
-// Changement de vue : Animé
 async function handleViewClick(e) {
     const btn = e.target.closest('.view-btn');
     if (!btn) return;
@@ -161,7 +157,6 @@ async function handleViewClick(e) {
     });
     btn.classList.add('active');
 
-    // Animation de fondu rapide
     const gridContainer = document.getElementById('grid-container');
     if (gridContainer) {
         gridContainer.classList.add('fading');
@@ -180,7 +175,6 @@ function renderGrid() {
         return; 
     }
 
-    // 1. Tri
     let sortedReleases = [...releases];
     if (currentSort === 'date') {
         sortedReleases.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -190,7 +184,6 @@ function renderGrid() {
         sortedReleases.sort((a, b) => a.credits.localeCompare(b.credits));
     }
 
-    // 2. Rendu
     let html = '';
     
     if (currentView === 'grid') {
@@ -209,7 +202,6 @@ function renderGrid() {
             </div>`).join('')}
         </div>`;
     } else {
-        // Vue Liste
         html = `<div class="list">
             ${sortedReleases.map(r => `
             <a href="#/release/${r.slug}" class="list-item">
@@ -264,7 +256,7 @@ function renderRelease(slug) {
   document.getElementById('play-release-btn').addEventListener('click', () => playRelease(r));
 }
 
-//--- FONCTIONS MODAL (Inchangées) ---
+//--- FONCTIONS MODAL ---
 function closeModal() {
     return new Promise(resolve => {
         modalOverlay.classList.remove('visible');
@@ -350,7 +342,7 @@ function showCustomPrompt(title, text, placeholder) {
     });
 }
 
-//--- LOGIQUE ADMIN (Inchangée) ---
+//--- LOGIQUE ADMIN ---
 adminIcon.addEventListener('click', async () => {
   const p = await showCustomPrompt('Admin Login', 'Enter admin password:', 'Password');
   
@@ -388,10 +380,24 @@ function renderAdmin() {
   });
 }
 
-//--- PLAYBACK (Inchangé) ---
+//--- PLAYBACK ---
+function updateMediaSession(r) {
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: r.title,
+      artist: r.credits,
+      album: 't.m.t.r.',
+      artwork: [
+        { src: r.cover, sizes: '512x512', type: 'image/png' }, // J'assume png/jpg, ajuste si besoin
+      ]
+    });
+  }
+}
+
 function playRelease(r) {
   currentIndex = releases.findIndex(x => x.slug === r.slug); if (currentIndex === -1) return;
   const isSameTrack = audio.src.includes(r.audio.split('/').pop());
+  
   if(!isSameTrack) {
       audio.src = r.audio;
       dockCover.src = r.cover; 
@@ -404,30 +410,45 @@ function playRelease(r) {
   } else {
       togglePlay();
   }
+  
   playerDock.classList.add('active'); 
   updatePlayBtn();
   updateSliderBackground();
+  updateMediaSession(r);
+  
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.playbackState = 'playing';
+  }
 }
+
 function updatePlayBtn() {
     const icon = isPlaying ? SVG_PAUSE : SVG_PLAY;
     btnPlay.innerHTML = icon;
     const bigBtn = document.getElementById('play-release-btn');
     if(bigBtn) bigBtn.innerHTML = `${icon} ${isPlaying ? 'Pause' : 'Play'}`;
 }
+
 function togglePlay() {
     if (!audio.src && releases.length > 0) { playRelease(releases[0]); return; }
     isPlaying ? audio.pause() : audio.play();
     isPlaying = !isPlaying;
     updatePlayBtn();
+    
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    }
 }
+
 function playNext() { if(releases.length) playRelease(releases[(currentIndex + 1) % releases.length]); }
 function playPrev() { if(releases.length) playRelease(releases[(currentIndex - 1 + releases.length) % releases.length]); }
+
 function updateSliderBackground() {
     const pct = seek.value || 0;
     seek.style.background = `linear-gradient(to right, ${paperColor} ${pct}%, ${trackColor} ${pct}%)`;
 }
 
-//--- INIT (Inchangé) ---
+
+//--- INIT ---
 function init() {
   try {
       paperColor = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
@@ -463,6 +484,13 @@ function init() {
       updateSliderBackground();
   });
   
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('previoustrack', playPrev);
+    navigator.mediaSession.setActionHandler('nexttrack', playNext);
+    navigator.mediaSession.setActionHandler('play', togglePlay);
+    navigator.mediaSession.setActionHandler('pause', togglePlay);
+  }
+
   window.addEventListener('hashchange', router);
   document.getElementById('year').textContent = new Date().getFullYear();
   
