@@ -50,7 +50,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   top: 0;
   z-index: 50;
   background: rgba(10, 10, 10, 0.7);
-  backdrop-filter: blur(24px) saturate(180%); /* Garde un blur plus prononcé pour l'effet glassmorphism */
+  backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-bottom: 1px solid var(--border);
   height: 70px;
@@ -102,19 +102,64 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   transform: translateY(20px);
 }
 
+/* --- Home: Header & Tabs --- */
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 40px;
+  margin-bottom: 32px;
+}
+
+.home-header h2 { 
+  margin: 0; 
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+
+.tabs { display: flex; gap: 8px; }
+
+.tab-btn {
+  font-family: var(--font-main);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.tab-btn:hover { background: var(--surface-hover); color: var(--paper); }
+.tab-btn.active { background: var(--paper); color: var(--bg); font-weight: 600; }
+
 /* --- Grid / Home --- */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 32px;
-  padding-top: 40px;
+  transition: opacity 0.15s ease-out;
 }
+
+.grid.fading { opacity: 0; }
 
 .card {
   display: flex;
+}
+
+a.card-link {
+  display: flex;
   flex-direction: column;
   gap: 16px;
-  group-hover: none;
+  text-decoration: none;
+  transition: transform 0.3s var(--ease-out);
+  width: 100%;
+}
+
+.card:hover a.card-link {
+  transform: translateY(-6px);
 }
 
 .card-image-wrap {
@@ -123,11 +168,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   position: relative;
   aspect-ratio: 1;
   background: var(--surface);
-  transition: transform 0.3s var(--ease-out); /* Supprimé box-shadow */
-}
-
-.card:hover .card-image-wrap {
-  transform: translateY(-6px);
+  transition: transform 0.3s var(--ease-out);
 }
 
 .card img {
@@ -141,18 +182,22 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   transform: scale(1.05);
 }
 
+.card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .card .title {
   font-weight: 600;
   font-size: 16px;
   letter-spacing: -0.3px;
   color: var(--paper);
-  margin-top: 16px; /* Ajoute un espace de 16px au-dessus du titre */
 }
 
 .card .meta {
   font-size: 13px;
   color: var(--muted);
-  margin-top: 4px;
 }
 
 /* --- Release Page --- */
@@ -160,18 +205,37 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   display: grid;
   grid-template-columns: 350px 1fr;
   gap: 48px;
-  padding-top: 60px;
+  /* padding-top: 60px; */ /* <-- SUPPRIME CETTE LIGNE */
   align-items: start;
 }
 
 .release-hero img {
   width: 100%;
   border-radius: var(--radius-lg);
-  /* box-shadow: 0 20px 50px -20px rgba(0,0,0,0.7); */ /* Supprimé box-shadow */
 }
 
 .release-details {
-  padding-top: 10px;
+  padding-top: 0; /* Garde ceci (ou supprime-le, 0 est la valeur par défaut) */
+}
+/* --- Style du lien retour --- */
+/* --- Style du lien retour --- */
+.back-link {
+  display: inline-block;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
+  /* margin-bottom: 24px; */ /* <-- SUPPRIME CETTE LIGNE */
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: var(--paper);
+}
+
+/* --- Header de la page Release --- */
+.page-header {
+  padding-top: 40px; /* Aligne avec le padding de la page d'accueil */
+  margin-bottom: 32px; /* Crée l'espace avant la cover */
 }
 
 .release-title {
@@ -235,7 +299,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   left: 0; right: 0; bottom: 24px;
   display: flex;
   justify-content: center;
-  pointer-events: none; /* Laisse passer les clics sur les côtés */
+  pointer-events: none;
   opacity: 0;
   transform: translateY(40px);
   transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
@@ -256,7 +320,6 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   border-radius: var(--radius-lg);
   width: 95%;
   max-width: 800px;
-  /* box-shadow: 0 20px 40px rgba(0,0,0,0.4); */ /* Supprimé box-shadow */
   overflow: hidden;
 }
 
@@ -325,7 +388,6 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   background: var(--paper) !important;
   color: var(--bg) !important;
   opacity: 1 !important;
-  /* box-shadow: 0 4px 12px rgba(255,255,255,0.2); */ /* Supprimé box-shadow */
 }
 
 .scrubber {
@@ -344,27 +406,25 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
 input[type=range] {
   -webkit-appearance: none;
   width: 100%;
-  background: transparent; /* Laissé transparent car le fond est géré par linear-gradient */
-  outline: none; /* Enlève l'outline par défaut au focus */
+  background: transparent; /* IMPORTANT: Supprime tout arrière-plan par défaut */
+  outline: none;
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
   height: 12px; width: 12px;
   border-radius: 50%;
-  background: #fff;
+  background: #fff; /* Le pouce reste blanc */
   margin-top: -4px;
-  /* box-shadow: 0 2px 6px rgba(0,0,0,0.3); */ /* Supprimé box-shadow */
   cursor: pointer;
   transition: transform 0.1s;
 }
 input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+/* Le track sera entièrement géré par JS avec background-image */
 input[type=range]::-webkit-slider-runnable-track {
   width: 100%; height: 4px;
-  background: #444; /* Fond gris de la piste */
+  background: transparent; /* IMPORTANT: Rend le track transparent pour que le linear-gradient de JS apparaisse */
   border-radius: 2px;
 }
-
-/* La partie remplie du slider est désormais gérée par JavaScript directement sur l'élément input */
 
 
 .player-right {
@@ -409,6 +469,7 @@ textarea.jsonedit {
 
 /* --- Mobile --- */
 @media(max-width: 768px) {
+  .home-header { flex-direction: column; align-items: stretch; gap: 20px; }
   .release-hero { grid-template-columns: 1fr; gap: 24px; }
   .release-title { font-size: 32px; }
   .player-inner { flex-direction: column; padding: 16px; gap: 16px; }

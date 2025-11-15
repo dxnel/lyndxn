@@ -13,6 +13,8 @@ const app = document.getElementById('app'),
       adminIcon = document.getElementById('admin-icon');
 
 let releases = [], currentIndex = 0, audio = new Audio(), isPlaying = false;
+let currentSort = 'date'; // État du tri
+let paperColor, trackColor; // Couleurs du slider
 
 // --- ICONS ---
 const SVG_PLAY = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
@@ -29,7 +31,7 @@ async function loadReleases() {
     const res = await fetch('https://raw.githubusercontent.com/dxnel/lyndxn/refs/heads/main/releases.json?t=' + Date.now());
     if (!res.ok) throw new Error(res.status);
     releases = await res.json();
-    releases.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Le tri initial se fera dans renderGrid
   } catch (e) {
     console.error(e);
     app.innerHTML = `<p style="color:#f55">Error: ${e.message}</p>`;
@@ -40,26 +42,13 @@ async function loadReleases() {
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function transitionTo(renderFn) {
-    // 1. Fade Out
     app.classList.add('page-exit');
-    
-    // 2. Wait for animation
-    await wait(350); // Match CSS duration
-    
-    // 3. Render new content
+    await wait(350);
     renderFn();
-    
-    // 4. Reset scroll
     window.scrollTo(0, 0);
-    
-    // 5. Prepare Fade In
     app.classList.remove('page-exit');
     app.classList.add('page-enter');
-    
-    // Force reflow
     void app.offsetWidth; 
-    
-    // 6. Fade In
     app.classList.remove('page-enter');
 }
 
@@ -69,7 +58,6 @@ async function router() {
   
   const hash = window.location.hash;
   
-  // Wrap renders in transition logic
   transitionTo(() => {
       if (hash.startsWith('#/release/')) renderRelease(hash.split('/')[2]);
       else if (hash === '#/admin') renderAdmin();
@@ -77,20 +65,81 @@ async function router() {
   });
 }
 
-//--- HOME ---
+//--- HOME & GRID ---
 function renderHome() {
-  if (!releases.length) { app.innerHTML = '<p>Loading...</p>'; return; }
-  app.innerHTML = `<div class="grid">${releases.map(r => `
+  app.innerHTML = `
+    <div class="home-header">
+      <h2>Library</h2>
+      <div class="tabs" id="sort-tabs">
+        <button class="tab-btn active" data-sort="date">Recent</button>
+        <button class="tab-btn" data-sort="title">Name (A-Z)</button>
+        <button class="tab-btn" data-sort="artist">Artist (A-Z)</button>
+      </div>
+    </div>
+    <div class="grid" id="releases-grid">
+      </div>`;
+    
+  document.getElementById('sort-tabs').addEventListener('click', handleSortClick);
+  
+  currentSort = 'date';
+  renderGrid();
+}
+
+async function handleSortClick(e) {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    
+    const sortBy = btn.dataset.sort;
+    if (sortBy === currentSort) return;
+    
+    currentSort = sortBy;
+    
+    document.querySelectorAll('#sort-tabs .tab-btn').forEach(b => {
+        b.classList.remove('active');
+    });
+    btn.classList.add('active');
+    
+    const grid = document.getElementById('releases-grid');
+    if (grid) {
+        grid.classList.add('fading');
+        await wait(150);
+        renderGrid();
+        grid.classList.remove('fading');
+    }
+}
+
+function renderGrid() {
+    if (!releases.length) {
+        app.innerHTML = '<p>Loading...</p>'; 
+        return; 
+    }
+
+    const grid = document.getElementById('releases-grid');
+    if (!grid) return;
+
+    let sortedReleases = [...releases];
+    if (currentSort === 'date') {
+        sortedReleases.sort((a, b) => new Date(b.date) - new Date(a.date));
+    } else if (currentSort === 'title') {
+        sortedReleases.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (currentSort === 'artist') {
+        sortedReleases.sort((a, b) => a.credits.localeCompare(b.credits));
+    }
+
+    grid.innerHTML = sortedReleases.map(r => `
     <div class="card">
         <a href="#/release/${r.slug}" class="card-link">
             <div class="card-image-wrap">
                 <img src="${r.cover}" alt="${r.title}" loading="lazy">
             </div>
-            <div class="title">${r.title}</div>
-            <div class="meta">${new Date(r.date).getFullYear()}</div>
+            <div class="card-text">
+                <div class="title">${escapeHtml(r.title)}</div>
+                <div class="meta">${escapeHtml(r.credits)}</div>
+            </div>
         </a>
-    </div>`).join('')}</div>`;
+    </div>`).join('');
 }
+
 
 //--- RELEASE ---
 function renderRelease(slug) {
@@ -99,9 +148,14 @@ function renderRelease(slug) {
   const desc = escapeHtml(r.description).replace(/\n/g, '<br>');
   
   const html = `
+  <div class="page-header">
+    <a href="#" class="back-link">← Back to library</a>
+  </div>
+
   <section class="release-hero">
     <img src="${r.cover}" alt="${r.title}">
     <div class="release-details">
+      
       <h1 class="release-title">${escapeHtml(r.title)}</h1>
       <div class="release-artist">${escapeHtml(r.credits)}</div>
       
@@ -114,9 +168,6 @@ function renderRelease(slug) {
       
       ${r.lyrics ? `<h3 style="margin-top:40px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--muted);">Lyrics</h3><p class="release-desc" style="color:var(--muted);">${r.lyrics.replace(/\n/g, '<br>')}</p>` : ''}
       
-      <div style="margin-top:60px;">
-        <a href="#" style="color:var(--muted); font-size:14px;">← Back to library</a>
-      </div>
     </div>
   </section>`;
   
@@ -147,7 +198,7 @@ function renderAdmin() {
   
   document.getElementById('download-json').addEventListener('click', () => downloadFile('releases.json', document.getElementById('json-edit').value));
   document.getElementById('apply-json').addEventListener('click', () => {
-    try { releases = JSON.parse(document.getElementById('json-edit').value).sort((a, b) => new Date(b.date) - new Date(a.date)); alert('Applied in memory.'); } catch (e) { alert('JSON error: ' + e.message); }
+    try { releases = JSON.parse(document.getElementById('json-edit').value); alert('Applied in memory.'); renderGrid(); } catch (e) { alert('JSON error: ' + e.message); }
   });
 }
 
@@ -155,7 +206,7 @@ function renderAdmin() {
 function playRelease(r) {
   currentIndex = releases.findIndex(x => x.slug === r.slug); if (currentIndex === -1) return;
   
-  const isSameTrack = audio.src.includes(r.audio.split('/').pop()); // Basic check
+  const isSameTrack = audio.src.includes(r.audio.split('/').pop());
   
   if(!isSameTrack) {
       audio.src = r.audio;
@@ -172,12 +223,12 @@ function playRelease(r) {
   
   playerDock.classList.add('active'); 
   updatePlayBtn();
+  updateSliderBackground(); // Initialise le fond du slider dès la lecture
 }
 
 function updatePlayBtn() {
     const icon = isPlaying ? SVG_PAUSE : SVG_PLAY;
     btnPlay.innerHTML = icon;
-    // Also update big button if on release page
     const bigBtn = document.getElementById('play-release-btn');
     if(bigBtn) bigBtn.innerHTML = `${icon} ${isPlaying ? 'Pause' : 'Play'}`;
 }
@@ -192,8 +243,31 @@ function togglePlay() {
 function playNext() { if(releases.length) playRelease(releases[(currentIndex + 1) % releases.length]); }
 function playPrev() { if(releases.length) playRelease(releases[(currentIndex - 1 + releases.length) % releases.length]); }
 
+// Fonction pour mettre à jour l'arrière-plan du slider
+function updateSliderBackground() {
+    const pct = seek.value || 0;
+    // Utilise les couleurs récupérées en JS
+    seek.style.background = `linear-gradient(to right, ${paperColor} ${pct}%, ${trackColor} ${pct}%)`;
+}
+
+
 //--- INIT ---
 function init() {
+  // Récupère les couleurs du slider UNE SEULE FOIS (et s'assure qu'elles sont bien des chaînes)
+  try {
+      paperColor = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
+      trackColor = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim(); // Utilise --muted pour le gris du track, ou #444 si tu préfères un gris fixe
+      if (!paperColor) paperColor = '#ededed'; // Fallback
+      if (!trackColor) trackColor = '#444'; // Fallback
+  } catch (e) {
+      console.error("Could not get CSS vars for slider, using fallbacks:", e);
+      paperColor = '#ededed';
+      trackColor = '#444';
+  }
+  
+  // Initialise l'arrière-plan du slider à 0% avant la lecture
+  updateSliderBackground();
+
   btnPlay.addEventListener('click', togglePlay);
   btnNext.addEventListener('click', playNext);
   btnPrev.addEventListener('click', playPrev);
@@ -202,8 +276,7 @@ function init() {
       curTime.textContent = formatTime(audio.currentTime);
       const pct = (audio.currentTime / audio.duration * 100) || 0;
       seek.value = pct;
-      // Fill slider background logic
-      seek.style.background = `linear-gradient(to right, #fff ${pct}%, #444 ${pct}%)`;
+      updateSliderBackground(); // Met à jour pendant la lecture
   });
   
   audio.addEventListener('loadedmetadata', () => { durTime.textContent = formatTime(audio.duration); });
@@ -211,19 +284,15 @@ function init() {
   
   seek.addEventListener('input', () => { 
       if (!audio.duration) return; 
-      audio.currentTime = (seek.value / 100) * audio.duration; 
+      const newTime = (seek.value / 100) * audio.duration;
+      audio.currentTime = newTime;
+      updateSliderBackground(); // Met à jour pendant le glissement
   });
   
   window.addEventListener('hashchange', router);
   document.getElementById('year').textContent = new Date().getFullYear();
   
-  // Initial load without transition
-  if (!releases.length) loadReleases().then(()=> {
-      const hash = window.location.hash;
-      if (hash.startsWith('#/release/')) renderRelease(hash.split('/')[2]);
-      else if (hash === '#/admin') renderAdmin();
-      else renderHome();
-  });
+  loadReleases().then(router);
 }
 
 init();
