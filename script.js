@@ -29,17 +29,18 @@ let isGrouped = false;
 let paperColor, trackColor;
 // modalResolve est maintenant géré localement
 
-// --- ICONS ---
-const SVG_PLAY = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-const SVG_PAUSE = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-// NOUVELLES ICÔNES (FILLED)
-const SVG_GRID = '<svg fill="currentColor" viewBox="0 0 16 16"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM9 2.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zM9 10.5A1.5 1.5 0 0 1 10.5 9h3A1.5 1.5 0 0 1 15 10.5v3A1.5 1.5 0 0 1 13.5 15h-3A1.5 1.5 0 0 1 9 13.5v-3z"/></svg>';
-const SVG_LIST = '<svg fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>';
-const SVG_GROUP = '<svg fill="currentColor" viewBox="0 0 16 16" style="width:14px; height:14px;"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>';
+// --- ICONS (MODIFIÉES POUR FLATICON) ---
+const SVG_PLAY = '<i class="fi fi-sr-play"></i>';
+const SVG_PAUSE = '<i class="fi fi-sr-pause"></i>';
+const SVG_GRID = '<i class="fi fi-sr-apps"></i>';
+const SVG_LIST = '<i class="fi fi-sr-list"></i>';
+const SVG_GROUP = '<i class="fi fi-sr-user"></i>';
+const SVG_LISTEN = '<i class="fi fi-sr-headphones"></i>';
 
 
 //--- UTIL ---
-const escapeHtml = s => s || s === 0 ? s.replace(/[&<>"']/g, c => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": '&#39;' })[c]) : '';
+// CORRIGÉ : Bug de syntaxe
+const escapeHtml = s => s || s === 0 ? s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) : '';
 const formatTime = s => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 const downloadFile = (name, text) => { const blob = new Blob([text], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
 
@@ -274,6 +275,20 @@ function renderRelease(slug) {
   if (!r) { app.innerHTML = `<p>Release not found. <a href="#">Go home</a></p>`; return; }
   const desc = escapeHtml(r.description).replace(/\n/g, '<br>');
   
+  // NOUVEAU : Logique Exclusif/Stream
+  const isExclusive = r.exclusive !== false;
+  let buttonHtml = '';
+  if (isExclusive) {
+      buttonHtml = `
+        <button class="btn" id="play-release-btn"><i class="fi fi-sr-play"></i> Play</button>
+        <a class="btn secondary" href="${r.audio}" download="${r.slug}.mp3">Download</a>
+      `;
+  } else {
+      buttonHtml = `
+        <a class="btn" href="${r.stream_url || '#'}" target="_blank"><i class="fi fi-sr-share-square"></i> Listen Now</a>
+      `;
+  }
+  
   const html = `
   <div class="page-header">
     <a href="#" class="back-link">← Back to releases</a>
@@ -287,8 +302,7 @@ function renderRelease(slug) {
       <div class="release-artist">${escapeHtml(r.credits)}</div>
       
       <div style="display:flex; gap:12px; margin-bottom:32px;">
-         <button class="btn" id="play-release-btn">${SVG_PLAY} Play</button>
-         <a class="btn secondary" href="${r.audio}" download="${r.slug}.mp3">Download</a>
+         ${buttonHtml}
       </div>
 
       <p class="release-desc">${desc || '...'}</p>
@@ -301,7 +315,11 @@ function renderRelease(slug) {
   </section>`;
   
   app.innerHTML = html;
-  document.getElementById('play-release-btn').addEventListener('click', () => playRelease(r));
+  
+  // Ajoute l'écouteur SEULEMENT si le bouton play existe
+  if (isExclusive) {
+    document.getElementById('play-release-btn').addEventListener('click', () => playRelease(r));
+  }
 }
 
 //--- FONCTIONS MODAL ---
@@ -442,12 +460,15 @@ function updateMediaSession(r) {
   }
 }
 
-// MODIFIÉ : Correction du bug de mise à jour du player
 function playRelease(r) {
-  currentIndex = releases.findIndex(x => x.slug === r.slug); if (currentIndex === -1) return;
+  // Sécurité : Ne joue pas si ce n'est pas exclusif
+  if (r.exclusive === false) return; 
+  
+  currentIndex = releases.findIndex(x => x.slug === r.slug); 
+  if (currentIndex === -1) return;
+  
   const isSameTrack = audio.src.includes(r.audio.split('/').pop());
   
-  // Met à jour l'UI (titre, cover, etc) À CHAQUE FOIS
   dockCover.src = r.cover; 
   dockTitle.textContent = r.title; 
   dockSub.textContent = r.credits;
@@ -456,16 +477,15 @@ function playRelease(r) {
   updateMediaSession(r);
   
   if(!isSameTrack) {
-      // RESET du player si nouveau morceau
       audio.src = r.audio;
       seek.value = 0;
       curTime.textContent = '0:00';
-      updateSliderBackground(0); // Force le fond à 0
+      updateSliderBackground(0);
       
       audio.play();
       isPlaying = true;
   } else {
-      togglePlay(); // Gère play/pause si c'est la même piste
+      togglePlay();
   }
   
   playerDock.classList.add('active'); 
@@ -478,13 +498,20 @@ function playRelease(r) {
 
 function updatePlayBtn() {
     const icon = isPlaying ? SVG_PAUSE : SVG_PLAY;
-    btnPlay.innerHTML = icon;
+    btnPlay.innerHTML = icon; // Remplace le contenu (l'icône <i>)
     const bigBtn = document.getElementById('play-release-btn');
     if(bigBtn) bigBtn.innerHTML = `${icon} ${isPlaying ? 'Pause' : 'Play'}`;
 }
 
 function togglePlay() {
-    if (!audio.src && releases.length > 0) { playRelease(releases[0]); return; }
+    if (!audio.src && releases.length > 0) {
+        // Trouve le premier morceau JOUABLE à jouer
+        const firstExclusive = releases.find(r => r.exclusive !== false);
+        if(firstExclusive) {
+            playRelease(firstExclusive);
+        }
+        return;
+    }
     isPlaying ? audio.pause() : audio.play();
     isPlaying = !isPlaying;
     updatePlayBtn();
@@ -494,10 +521,33 @@ function togglePlay() {
     }
 }
 
-function playNext() { if(releases.length) playRelease(releases[(currentIndex + 1) % releases.length]); }
-function playPrev() { if(releases.length) playRelease(releases[(currentIndex - 1 + releases.length) % releases.length]); }
+function playNext() {
+    if (!releases.length) return;
+    let nextIndex = (currentIndex + 1) % releases.length;
+    
+    // Boucle pour trouver le prochain morceau JOUABLE
+    while (releases[nextIndex].exclusive === false && nextIndex !== currentIndex) {
+        nextIndex = (nextIndex + 1) % releases.length;
+    }
+    
+    if (releases[nextIndex].exclusive !== false) {
+        playRelease(releases[nextIndex]);
+    }
+}
+function playPrev() {
+    if (!releases.length) return;
+    let prevIndex = (currentIndex - 1 + releases.length) % releases.length;
 
-// MODIFIÉ : Accepte un 'pct' optionnel pour forcer le reset
+    // Boucle pour trouver le morceau JOUABLE précédent
+    while (releases[prevIndex].exclusive === false && prevIndex !== currentIndex) {
+        prevIndex = (prevIndex - 1 + releases.length) % releases.length;
+    }
+    
+    if (releases[prevIndex].exclusive !== false) {
+        playRelease(releases[prevIndex]);
+    }
+}
+
 function updateSliderBackground(pct) {
     const percent = pct !== undefined ? pct : seek.value || 0;
     seek.style.background = `linear-gradient(to right, ${paperColor} ${percent}%, ${trackColor} ${percent}%)`;
@@ -517,7 +567,7 @@ function init() {
       trackColor = '#444';
   }
   
-  updateSliderBackground(0); // Initialise à 0
+  updateSliderBackground(0);
 
   btnPlay.addEventListener('click', togglePlay);
   btnNext.addEventListener('click', playNext);
