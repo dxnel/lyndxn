@@ -142,7 +142,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
 .tab-btn:hover { background: var(--surface-hover); color: var(--paper); }
 .tab-btn.active { background: var(--paper); color: var(--bg); font-weight: 600; }
 
-/* NOUVEAU : Sélecteur de Vue */
+/* Sélecteur de Vue */
 .view-toggle {
   display: flex;
   gap: 8px;
@@ -175,7 +175,6 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
 
 /* Conteneur de Grille/Liste */
 .grid-container {
-  /* L'animation d'apparition de la page est gérée ici */
   opacity: 1;
   transform: translateY(0);
   transition: opacity 0.4s var(--ease-out), transform 0.4s var(--ease-out);
@@ -252,7 +251,7 @@ a.card-link {
   color: var(--muted);
 }
 
-/* NOUVEAU : Vue Liste */
+/* Vue Liste */
 .list {
   display: flex;
   flex-direction: column;
@@ -296,9 +295,10 @@ a.card-link {
 .list-item-date {
   font-size: 13px;
   color: var(--muted);
-  width: 80px; /* Aligne les dates */
+  width: 85px; /* Espace pour JJ-MM-YYYY */
   text-align: right;
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums; /* Garde les chiffres alignés */
 }
 
 
@@ -349,16 +349,10 @@ a.card-link {
   font-size: 18px;
   color: var(--muted);
   font-weight: 500;
-  margin-bottom: 8px; /* Réduit pour faire place à la date */
+  margin-bottom: 32px; /* Marge restaurée */
 }
 
-/* NOUVEAU : Date de release */
-.release-date {
-  font-size: 15px;
-  color: var(--muted);
-  margin-bottom: 32px;
-}
-
+/* Style de la description */
 .release-desc {
   color: #ccc;
   line-height: 1.7;
@@ -366,6 +360,16 @@ a.card-link {
   font-size: 15px;
   max-width: 500px;
 }
+
+/* Date de release (sous la description) */
+.release-date-bottom {
+  margin-top: -16px; /* Remonte dans la marge de la description */
+  margin-bottom: 32px; /* Garde l'espace avant les paroles */
+  font-size: 14px;
+  color: var(--muted);
+  font-style: italic;
+}
+
 
 /* --- Buttons --- */
 .btn {
@@ -553,7 +557,7 @@ input[type=range]::-webkit-slider-runnable-track {
   border: 1px solid var(--border);
 }
 
-.textarea.jsonedit {
+textarea.jsonedit {
   width: 100%; 
   height: 320px;
   font-family: 'JetBrains Mono', monospace;
@@ -657,24 +661,47 @@ textarea.jsonedit:focus {
 
 /* --- Mobile --- */
 @media(max-width: 768px) {
+  /* NOUVEAU: Padding mobile */
+  .container {
+    padding: 0 18px;
+  }
+
   .home-header { 
-    flex-wrap: wrap; /* Permet aux éléments de passer à la ligne */
+    flex-wrap: wrap;
   }
   .tabs {
-    order: 2; /* Met les onglets en bas */
-    flex-basis: 100%; /* Prend toute la largeur */
+    order: 2;
+    flex-basis: 100%;
     justify-content: center;
     margin-top: 16px;
   }
   .home-header h2 { order: 1; }
-  .view-toggle { order: 1; } /* Place les icônes à côté du titre */
+  .view-toggle { order: 1; }
   
+  /* NOUVEAU: Grille mobile à 2 colonnes */
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 24px;
+  }
+
   .release-hero { grid-template-columns: 1fr; gap: 24px; }
   .release-title { font-size: 32px; }
+  
+  /* Player */
   .player-inner { flex-direction: column; padding: 16px; gap: 16px; }
   .player-left, .player-right, .player-controls { width: 100%; justify-content: center; text-align: center; }
   .player-left { justify-content: flex-start; }
-  #player-dock { bottom: 0; }
-  .glass-panel { width: 100%; border-radius: 20px 20px 0 0; max-width: 100%; border-bottom: 0; }
-  .list-item-date { display: none; } /* Cache la date en vue liste sur mobile */
+  
+  /* MODIFIÉ: Player flottant */
+  #player-dock { 
+    bottom: 12px; 
+  }
+  .glass-panel { 
+    width: 95%; /* Largeur réduite */
+    border-radius: var(--radius-md); /* Tous les coins arrondis (16px) */
+    max-width: 800px; /* Respecte la largeur max */
+    border-bottom: 1px solid var(--border); /* Rétablit la bordure */
+  }
+  
+  .list-item-date { display: none; }
 }

@@ -24,14 +24,13 @@ const modalOverlay = document.getElementById('modal-overlay'),
 
 let releases = [], currentIndex = 0, audio = new Audio(), isPlaying = false;
 let currentSort = 'date';
-let currentView = 'grid'; // NOUVEAU : État de la vue
+let currentView = 'grid'; // État de la vue
 let paperColor, trackColor;
 // modalResolve est maintenant géré localement dans chaque promesse
 
 // --- ICONS ---
 const SVG_PLAY = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const SVG_PAUSE = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-// NOUVEAU : Icônes de vue
 const SVG_GRID = '<svg fill="currentColor" viewBox="0 0 16 16"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3A1.5 1.5 0 0 1 15 10.5v3A1.5 1.5 0 0 1 13.5 15h-3A1.5 1.5 0 0 1 9 13.5v-3z"/></svg>';
 const SVG_LIST = '<svg fill="currentColor" viewBox="0 0 16 16"><path d="M2 3.5A.5.5 0 0 1 2.5 3h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 4A.5.5 0 0 1 2.5 7h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 4A.5.5 0 0 1 2.5 11h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>';
 
@@ -40,6 +39,20 @@ const SVG_LIST = '<svg fill="currentColor" viewBox="0 0 16 16"><path d="M2 3.5A.
 const escapeHtml = s => s || s === 0 ? s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) : '';
 const formatTime = s => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 const downloadFile = (name, text) => { const blob = new Blob([text], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
+
+// NOUVELLE FONCTION DATE
+const formatDate = (dateString) => {
+    try {
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // +1 car les mois sont 0-indexés
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+    } catch (e) {
+        console.error("Erreur formatage date:", e);
+        return dateString; // Retourne la date brute en cas d'erreur
+    }
+};
 
 //--- FETCH ---
 async function loadReleases() {
@@ -98,7 +111,6 @@ async function renderHome() {
     <div class="grid-container" id="grid-container">
     </div>`;
     
-  // Ajoute les écouteurs
   document.getElementById('sort-tabs').addEventListener('click', handleSortClick);
   document.getElementById('view-toggle').addEventListener('click', handleViewClick);
   
@@ -130,7 +142,7 @@ function handleSortClick(e) {
     });
     btn.classList.add('active');
     
-    // Rendu instantané, sans animation
+    // Rendu instantané
     renderGrid();
 }
 
@@ -149,13 +161,13 @@ async function handleViewClick(e) {
     });
     btn.classList.add('active');
 
-    // Ajoute une animation de fondu rapide
+    // Animation de fondu rapide
     const gridContainer = document.getElementById('grid-container');
     if (gridContainer) {
         gridContainer.classList.add('fading');
-        await wait(150); // Attend la fin du fondu
-        renderGrid(); // Change le contenu
-        gridContainer.classList.remove('fading'); // Rentre en fondu (géré par le CSS)
+        await wait(150);
+        renderGrid();
+        gridContainer.classList.remove('fading');
     }
 }
 
@@ -168,7 +180,7 @@ function renderGrid() {
         return; 
     }
 
-    // 1. Tri (maintenant simple)
+    // 1. Tri
     let sortedReleases = [...releases];
     if (currentSort === 'date') {
         sortedReleases.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -178,11 +190,10 @@ function renderGrid() {
         sortedReleases.sort((a, b) => a.credits.localeCompare(b.credits));
     }
 
-    // 2. Génération du HTML en fonction de la vue
+    // 2. Rendu
     let html = '';
     
     if (currentView === 'grid') {
-        // Vue Grille (comme avant)
         html = `<div class="grid">
             ${sortedReleases.map(r => `
             <div class="card">
@@ -207,7 +218,7 @@ function renderGrid() {
                     <div class="title">${escapeHtml(r.title)}</div>
                     <div class="meta">${escapeHtml(r.credits)}</div>
                 </div>
-                <div class="list-item-date">${new Date(r.date).getFullYear()}</div>
+                <div class="list-item-date">${formatDate(r.date)}</div>
             </a>
             `).join('')}
         </div>`;
@@ -222,12 +233,6 @@ function renderRelease(slug) {
   const r = releases.find(x => x.slug === slug);
   if (!r) { app.innerHTML = `<p>Release not found. <a href="#">Go home</a></p>`; return; }
   const desc = escapeHtml(r.description).replace(/\n/g, '<br>');
-  // NOUVEAU : Formatage de la date
-  const releaseDate = new Date(r.date).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-  });
   
   const html = `
   <div class="page-header">
@@ -240,7 +245,6 @@ function renderRelease(slug) {
       
       <h1 class="release-title">${escapeHtml(r.title)}</h1>
       <div class="release-artist">${escapeHtml(r.credits)}</div>
-      <div class="release-date">Sorti le ${releaseDate}</div>
       
       <div style="display:flex; gap:12px; margin-bottom:32px;">
          <button class="btn" id="play-release-btn">${SVG_PLAY} Play</button>
@@ -248,6 +252,8 @@ function renderRelease(slug) {
       </div>
 
       <p class="release-desc">${desc || '...'}</p>
+      
+      <div class="release-date-bottom">Release date: ${formatDate(r.date)}</div>
       
       ${r.lyrics ? `<h3 style="margin-top:40px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--muted);">Lyrics</h3><p class="release-desc" style="color:var(--muted);">${r.lyrics.replace(/\n/g, '<br>')}</p>` : ''}
       
@@ -268,7 +274,6 @@ function closeModal() {
         }, 300);
     });
 }
-
 function showCustomAlert(title, text) {
     modalTitle.textContent = title;
     modalText.innerHTML = text;
@@ -301,7 +306,6 @@ function showCustomAlert(title, text) {
         window.addEventListener('keydown', handleKeydown);
     });
 }
-
 function showCustomPrompt(title, text, placeholder) {
     modalTitle.textContent = title;
     modalText.innerHTML = text;
@@ -346,7 +350,7 @@ function showCustomPrompt(title, text, placeholder) {
     });
 }
 
-//--- LOGIQUE ADMIN ---
+//--- LOGIQUE ADMIN (Inchangée) ---
 adminIcon.addEventListener('click', async () => {
   const p = await showCustomPrompt('Admin Login', 'Enter admin password:', 'Password');
   
@@ -356,7 +360,6 @@ adminIcon.addEventListener('click', async () => {
     await showCustomAlert('Error', 'Wrong password.');
   }
 });
-
 function renderAdmin() {
   app.innerHTML = `<section>
   <div class="page-header">
