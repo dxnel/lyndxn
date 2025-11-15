@@ -24,12 +24,17 @@ const modalOverlay = document.getElementById('modal-overlay'),
 
 let releases = [], currentIndex = 0, audio = new Audio(), isPlaying = false;
 let currentSort = 'date';
+let currentView = 'grid'; // NOUVEAU : État de la vue
 let paperColor, trackColor;
 // modalResolve est maintenant géré localement dans chaque promesse
 
 // --- ICONS ---
 const SVG_PLAY = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const SVG_PAUSE = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+// NOUVEAU : Icônes de vue
+const SVG_GRID = '<svg fill="currentColor" viewBox="0 0 16 16"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3A1.5 1.5 0 0 1 15 10.5v3A1.5 1.5 0 0 1 13.5 15h-3A1.5 1.5 0 0 1 9 13.5v-3z"/></svg>';
+const SVG_LIST = '<svg fill="currentColor" viewBox="0 0 16 16"><path d="M2 3.5A.5.5 0 0 1 2.5 3h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 4A.5.5 0 0 1 2.5 7h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 4A.5.5 0 0 1 2.5 11h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>';
+
 
 //--- UTIL ---
 const escapeHtml = s => s || s === 0 ? s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) : '';
@@ -85,26 +90,33 @@ async function renderHome() {
         <button class="tab-btn" data-sort="title">Name (A-Z)</button>
         <button class="tab-btn" data-sort="artist">Artist (A-Z)</button>
       </div>
+      <div class="view-toggle" id="view-toggle">
+        <button class="view-btn ${currentView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid View">${SVG_GRID}</button>
+        <button class="view-btn ${currentView === 'list' ? 'active' : ''}" data-view="list" title="List View">${SVG_LIST}</button>
+      </div>
     </div>
-    <div class="grid" id="releases-grid">
+    <div class="grid-container" id="grid-container">
     </div>`;
     
+  // Ajoute les écouteurs
   document.getElementById('sort-tabs').addEventListener('click', handleSortClick);
+  document.getElementById('view-toggle').addEventListener('click', handleViewClick);
   
   currentSort = 'date';
   
   // Animation d'apparition LENTE
-  const grid = document.getElementById('releases-grid');
-  grid.classList.add('grid-page-enter'); // Utilise l'animation de 0.4s
+  const gridContainer = document.getElementById('grid-container');
+  gridContainer.classList.add('grid-page-enter');
   renderGrid();
   
   await wait(50);
   
-  void grid.offsetWidth;
-  grid.classList.remove('grid-page-enter');
+  void gridContainer.offsetWidth;
+  gridContainer.classList.remove('grid-page-enter');
 }
 
-async function handleSortClick(e) {
+// Tri : Instantané
+function handleSortClick(e) {
     const btn = e.target.closest('.tab-btn');
     if (!btn) return;
     
@@ -118,31 +130,45 @@ async function handleSortClick(e) {
     });
     btn.classList.add('active');
     
-    // Animation de tri RAPIDE (horizontale)
-    const grid = document.getElementById('releases-grid');
-    if (grid) {
-        grid.classList.add('grid-sort-exit'); // Animation de sortie (0.2s)
-        await wait(200); // Attend 200ms (au lieu de 150 ou 300)
-        
+    // Rendu instantané, sans animation
+    renderGrid();
+}
+
+// Changement de vue : Animé
+async function handleViewClick(e) {
+    const btn = e.target.closest('.view-btn');
+    if (!btn) return;
+
+    const view = btn.dataset.view;
+    if (view === currentView) return;
+
+    currentView = view;
+
+    document.querySelectorAll('#view-toggle .view-btn').forEach(b => {
+        b.classList.remove('active');
+    });
+    btn.classList.add('active');
+
+    // Ajoute une animation de fondu rapide
+    const gridContainer = document.getElementById('grid-container');
+    if (gridContainer) {
+        gridContainer.classList.add('fading');
+        await wait(150); // Attend la fin du fondu
         renderGrid(); // Change le contenu
-        
-        grid.classList.remove('grid-sort-exit');
-        grid.classList.add('grid-sort-enter'); // Prépare l'entrée (0.2s)
-        
-        void grid.offsetWidth;
-        grid.classList.remove('grid-sort-enter'); // Animation d'entrée
+        gridContainer.classList.remove('fading'); // Rentre en fondu (géré par le CSS)
     }
 }
 
 function renderGrid() {
+    const gridContainer = document.getElementById('grid-container');
+    if (!gridContainer) return;
+
     if (!releases.length) {
-        app.innerHTML = '<p>Loading...</p>'; 
+        gridContainer.innerHTML = '<p>Loading...</p>'; 
         return; 
     }
 
-    const grid = document.getElementById('releases-grid');
-    if (!grid) return;
-
+    // 1. Tri (maintenant simple)
     let sortedReleases = [...releases];
     if (currentSort === 'date') {
         sortedReleases.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -152,18 +178,42 @@ function renderGrid() {
         sortedReleases.sort((a, b) => a.credits.localeCompare(b.credits));
     }
 
-    grid.innerHTML = sortedReleases.map(r => `
-    <div class="card">
-        <a href="#/release/${r.slug}" class="card-link">
-            <div class="card-image-wrap">
+    // 2. Génération du HTML en fonction de la vue
+    let html = '';
+    
+    if (currentView === 'grid') {
+        // Vue Grille (comme avant)
+        html = `<div class="grid">
+            ${sortedReleases.map(r => `
+            <div class="card">
+                <a href="#/release/${r.slug}" class="card-link">
+                    <div class="card-image-wrap">
+                        <img src="${r.cover}" alt="${r.title}" loading="lazy">
+                    </div>
+                    <div class="card-text">
+                        <div class="title">${escapeHtml(r.title)}</div>
+                        <div class="meta">${escapeHtml(r.credits)}</div>
+                    </div>
+                </a>
+            </div>`).join('')}
+        </div>`;
+    } else {
+        // Vue Liste
+        html = `<div class="list">
+            ${sortedReleases.map(r => `
+            <a href="#/release/${r.slug}" class="list-item">
                 <img src="${r.cover}" alt="${r.title}" loading="lazy">
-            </div>
-            <div class="card-text">
-                <div class="title">${escapeHtml(r.title)}</div>
-                <div class="meta">${escapeHtml(r.credits)}</div>
-            </div>
-        </a>
-    </div>`).join('');
+                <div class="list-item-meta">
+                    <div class="title">${escapeHtml(r.title)}</div>
+                    <div class="meta">${escapeHtml(r.credits)}</div>
+                </div>
+                <div class="list-item-date">${new Date(r.date).getFullYear()}</div>
+            </a>
+            `).join('')}
+        </div>`;
+    }
+
+    gridContainer.innerHTML = html;
 }
 
 
@@ -172,6 +222,12 @@ function renderRelease(slug) {
   const r = releases.find(x => x.slug === slug);
   if (!r) { app.innerHTML = `<p>Release not found. <a href="#">Go home</a></p>`; return; }
   const desc = escapeHtml(r.description).replace(/\n/g, '<br>');
+  // NOUVEAU : Formatage de la date
+  const releaseDate = new Date(r.date).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+  });
   
   const html = `
   <div class="page-header">
@@ -184,10 +240,11 @@ function renderRelease(slug) {
       
       <h1 class="release-title">${escapeHtml(r.title)}</h1>
       <div class="release-artist">${escapeHtml(r.credits)}</div>
+      <div class="release-date">Sorti le ${releaseDate}</div>
       
       <div style="display:flex; gap:12px; margin-bottom:32px;">
          <button class="btn" id="play-release-btn">${SVG_PLAY} Play</button>
-         <a class="btn secondary" href="${r.audio}" download="${r.slug}.wav">Download</a>
+         <a class="btn secondary" href="${r.audio}" download="${r.slug}.mp3">Download</a>
       </div>
 
       <p class="release-desc">${desc || '...'}</p>
@@ -201,16 +258,14 @@ function renderRelease(slug) {
   document.getElementById('play-release-btn').addEventListener('click', () => playRelease(r));
 }
 
-//--- FONCTIONS MODAL (Corrigées) ---
-
-// Renvoie une promesse qui se résout à la fin de l'animation de fermeture
+//--- FONCTIONS MODAL (Inchangées) ---
 function closeModal() {
     return new Promise(resolve => {
         modalOverlay.classList.remove('visible');
         setTimeout(() => {
             modalOverlay.classList.add('hidden');
-            resolve(); // La promesse se résout une fois l'animation terminée
-        }, 300); // Doit correspondre à la transition CSS
+            resolve();
+        }, 300);
     });
 }
 
@@ -224,30 +279,23 @@ function showCustomAlert(title, text) {
     modalOverlay.classList.remove('hidden');
     requestAnimationFrame(() => modalOverlay.classList.add('visible'));
 
-    // Crée une promesse qui attend la fermeture
     return new Promise(resolve => {
-        // Crée des gestionnaires de clics uniques pour CETTE alerte
         const handleSubmit = async () => {
             await closeModal();
             cleanupListeners();
             resolve(true);
         };
-        
         const handleOverlayClick = async (e) => {
             if (e.target === modalOverlay) await handleSubmit();
         };
-
         const handleKeydown = async (e) => {
             if (e.key === 'Escape' || e.key === 'Enter') await handleSubmit();
         };
-
         const cleanupListeners = () => {
             modalSubmit.removeEventListener('click', handleSubmit);
             modalOverlay.removeEventListener('click', handleOverlayClick);
             window.removeEventListener('keydown', handleKeydown);
         };
-
-        // Attache les écouteurs
         modalSubmit.addEventListener('click', handleSubmit);
         modalOverlay.addEventListener('click', handleOverlayClick);
         window.addEventListener('keydown', handleKeydown);
@@ -266,41 +314,31 @@ function showCustomPrompt(title, text, placeholder) {
     modalOverlay.classList.remove('hidden');
     requestAnimationFrame(() => modalOverlay.classList.add('visible'));
     
-    // Ligne de focus auto supprimée
-
-    // Crée une promesse qui attend la fermeture
     return new Promise(resolve => {
-        // Crée des gestionnaires de clics uniques
         const handleSubmit = async () => {
             const value = modalPassword.value;
             await closeModal();
             cleanupListeners();
             resolve(value);
         };
-
         const handleCancel = async () => {
             await closeModal();
             cleanupListeners();
             resolve(null);
         };
-        
         const handleOverlayClick = async (e) => {
             if (e.target === modalOverlay) await handleCancel();
         };
-
         const handleKeydown = async (e) => {
             if (e.key === 'Escape') await handleCancel();
             if (e.key === 'Enter') await handleSubmit();
         };
-        
         const cleanupListeners = () => {
             modalSubmit.removeEventListener('click', handleSubmit);
             modalCancel.removeEventListener('click', handleCancel);
             modalOverlay.removeEventListener('click', handleOverlayClick);
             window.removeEventListener('keydown', handleKeydown);
         };
-
-        // Attache les écouteurs
         modalSubmit.addEventListener('click', handleSubmit);
         modalCancel.addEventListener('click', handleCancel);
         modalOverlay.addEventListener('click', handleOverlayClick);
@@ -310,13 +348,11 @@ function showCustomPrompt(title, text, placeholder) {
 
 //--- LOGIQUE ADMIN ---
 adminIcon.addEventListener('click', async () => {
-  // 1. Attend la RÉPONSE ET la FERMETURE du prompt
   const p = await showCustomPrompt('Admin Login', 'Enter admin password:', 'Password');
   
   if (p === '1234') {
     window.location.hash = '#/admin';
-  } else if (p !== null) { // (null signifie 'Cancel')
-    // 2. Ouvre l'alerte SEULEMENT APRÈS la fermeture du prompt
+  } else if (p !== null) {
     await showCustomAlert('Error', 'Wrong password.');
   }
 });
@@ -349,55 +385,46 @@ function renderAdmin() {
   });
 }
 
-//--- PLAYBACK ---
+//--- PLAYBACK (Inchangé) ---
 function playRelease(r) {
   currentIndex = releases.findIndex(x => x.slug === r.slug); if (currentIndex === -1) return;
-  
   const isSameTrack = audio.src.includes(r.audio.split('/').pop());
-  
   if(!isSameTrack) {
       audio.src = r.audio;
       dockCover.src = r.cover; 
       dockTitle.textContent = r.title; 
       dockSub.textContent = r.credits;
       downloadLink.href = r.audio; 
-      downloadLink.download = `${r.slug}.wav`;
+      downloadLink.download = `${r.slug}.mp3`;
       audio.play();
       isPlaying = true;
   } else {
       togglePlay();
   }
-  
   playerDock.classList.add('active'); 
   updatePlayBtn();
   updateSliderBackground();
 }
-
 function updatePlayBtn() {
     const icon = isPlaying ? SVG_PAUSE : SVG_PLAY;
     btnPlay.innerHTML = icon;
     const bigBtn = document.getElementById('play-release-btn');
     if(bigBtn) bigBtn.innerHTML = `${icon} ${isPlaying ? 'Pause' : 'Play'}`;
 }
-
 function togglePlay() {
     if (!audio.src && releases.length > 0) { playRelease(releases[0]); return; }
     isPlaying ? audio.pause() : audio.play();
     isPlaying = !isPlaying;
     updatePlayBtn();
 }
-
 function playNext() { if(releases.length) playRelease(releases[(currentIndex + 1) % releases.length]); }
 function playPrev() { if(releases.length) playRelease(releases[(currentIndex - 1 + releases.length) % releases.length]); }
-
-// Fonction pour mettre à jour l'arrière-plan du slider
 function updateSliderBackground() {
     const pct = seek.value || 0;
     seek.style.background = `linear-gradient(to right, ${paperColor} ${pct}%, ${trackColor} ${pct}%)`;
 }
 
-
-//--- INIT ---
+//--- INIT (Inchangé) ---
 function init() {
   try {
       paperColor = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
@@ -432,8 +459,6 @@ function init() {
       audio.currentTime = newTime;
       updateSliderBackground();
   });
-  
-  // Les écouteurs de modal sont maintenant gérés dans les fonctions show...
   
   window.addEventListener('hashchange', router);
   document.getElementById('year').textContent = new Date().getFullYear();

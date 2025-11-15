@@ -108,15 +108,22 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   align-items: center;
   padding-top: 40px;
   margin-bottom: 32px;
+  gap: 20px; /* Espace pour les nouveaux boutons */
 }
 
 .home-header h2 { 
   margin: 0; 
   font-size: 24px;
   letter-spacing: -0.5px;
+  white-space: nowrap;
 }
 
-.tabs { display: flex; gap: 8px; }
+.tabs { 
+  display: flex; 
+  gap: 8px; 
+  justify-content: flex-start;
+  flex: 1; /* Prend l'espace du milieu */
+}
 
 .tab-btn {
   font-family: var(--font-main);
@@ -129,41 +136,66 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   color: var(--muted);
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
 }
 
 .tab-btn:hover { background: var(--surface-hover); color: var(--paper); }
 .tab-btn.active { background: var(--paper); color: var(--bg); font-weight: 600; }
+
+/* NOUVEAU : Sélecteur de Vue */
+.view-toggle {
+  display: flex;
+  gap: 8px;
+}
+.view-btn {
+  background: var(--surface);
+  color: var(--muted);
+  border: 0;
+  border-radius: var(--radius-pill);
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.view-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.view-btn:hover {
+  background: var(--surface-hover);
+  color: var(--paper);
+}
+.view-btn.active {
+  background: var(--paper);
+  color: var(--bg);
+}
+
+/* Conteneur de Grille/Liste */
+.grid-container {
+  /* L'animation d'apparition de la page est gérée ici */
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.4s var(--ease-out), transform 0.4s var(--ease-out);
+  will-change: opacity, transform;
+}
+.grid-container.fading { /* Pour l'anim de changement de vue */
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+.grid-container.grid-page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
 
 /* --- Grid / Home --- */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 32px;
-  /* État de base (nécessaire pour les transitions) */
-  opacity: 1;
-  transform: translateY(0) translateX(0); /* Gère X et Y */
-  will-change: opacity, transform;
 }
-
-/* Animation d'APPARITION (lente, verticale) */
-.grid.grid-page-enter {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.4s var(--ease-out), transform 0.4s var(--ease-out);
-}
-
-/* Animations de TRI (rapides, horizontales) */
-.grid.grid-sort-exit {
-  opacity: 0;
-  transform: translateX(-20px); /* Glisse vers la gauche */
-  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-}
-.grid.grid-sort-enter {
-  opacity: 0;
-  transform: translateX(20px); /* Vient de la droite */
-  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-}
-
 
 .card {
   display: flex;
@@ -220,6 +252,56 @@ a.card-link {
   color: var(--muted);
 }
 
+/* NOUVEAU : Vue Liste */
+.list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 10px;
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+.list-item:hover {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+}
+.list-item img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.list-item-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.list-item-meta .title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--paper);
+}
+.list-item-meta .meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+.list-item-date {
+  font-size: 13px;
+  color: var(--muted);
+  width: 80px; /* Aligne les dates */
+  text-align: right;
+  flex-shrink: 0;
+}
+
+
 /* --- Release Page --- */
 .release-hero {
   display: grid;
@@ -266,8 +348,15 @@ a.card-link {
 .release-artist {
   font-size: 18px;
   color: var(--muted);
-  margin-bottom: 32px;
   font-weight: 500;
+  margin-bottom: 8px; /* Réduit pour faire place à la date */
+}
+
+/* NOUVEAU : Date de release */
+.release-date {
+  font-size: 15px;
+  color: var(--muted);
+  margin-bottom: 32px;
 }
 
 .release-desc {
@@ -568,7 +657,18 @@ textarea.jsonedit:focus {
 
 /* --- Mobile --- */
 @media(max-width: 768px) {
-  .home-header { flex-direction: column; align-items: stretch; gap: 20px; }
+  .home-header { 
+    flex-wrap: wrap; /* Permet aux éléments de passer à la ligne */
+  }
+  .tabs {
+    order: 2; /* Met les onglets en bas */
+    flex-basis: 100%; /* Prend toute la largeur */
+    justify-content: center;
+    margin-top: 16px;
+  }
+  .home-header h2 { order: 1; }
+  .view-toggle { order: 1; } /* Place les icônes à côté du titre */
+  
   .release-hero { grid-template-columns: 1fr; gap: 24px; }
   .release-title { font-size: 32px; }
   .player-inner { flex-direction: column; padding: 16px; gap: 16px; }
@@ -576,4 +676,5 @@ textarea.jsonedit:focus {
   .player-left { justify-content: flex-start; }
   #player-dock { bottom: 0; }
   .glass-panel { width: 100%; border-radius: 20px 20px 0 0; max-width: 100%; border-bottom: 0; }
+  .list-item-date { display: none; } /* Cache la date en vue liste sur mobile */
 }
