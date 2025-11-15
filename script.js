@@ -11,10 +11,21 @@ const app = document.getElementById('app'),
       seek = document.getElementById('seek'),
       downloadLink = document.getElementById('download-link'),
       adminIcon = document.getElementById('admin-icon');
+      
+// --- ÉLÉMENTS MODAL ---
+const modalOverlay = document.getElementById('modal-overlay'),
+      customModal = document.getElementById('custom-modal'),
+      modalTitle = document.getElementById('modal-title'),
+      modalText = document.getElementById('modal-text'),
+      modalInputArea = document.getElementById('modal-input-area'),
+      modalPassword = document.getElementById('modal-password'),
+      modalSubmit = document.getElementById('modal-submit'),
+      modalCancel = document.getElementById('modal-cancel');
 
 let releases = [], currentIndex = 0, audio = new Audio(), isPlaying = false;
-let currentSort = 'date'; // État du tri
-let paperColor, trackColor; // Couleurs du slider
+let currentSort = 'date';
+let paperColor, trackColor;
+// modalResolve est maintenant géré localement dans chaque promesse
 
 // --- ICONS ---
 const SVG_PLAY = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
@@ -31,7 +42,6 @@ async function loadReleases() {
     const res = await fetch('https://raw.githubusercontent.com/dxnel/lyndxn/refs/heads/main/releases.json?t=' + Date.now());
     if (!res.ok) throw new Error(res.status);
     releases = await res.json();
-    // Le tri initial se fera dans renderGrid
   } catch (e) {
     console.error(e);
     app.innerHTML = `<p style="color:#f55">Error: ${e.message}</p>`;
@@ -66,7 +76,7 @@ async function router() {
 }
 
 //--- HOME & GRID ---
-function renderHome() {
+async function renderHome() {
   app.innerHTML = `
     <div class="home-header">
       <h2>Library</h2>
@@ -77,12 +87,21 @@ function renderHome() {
       </div>
     </div>
     <div class="grid" id="releases-grid">
-      </div>`;
+    </div>`;
     
   document.getElementById('sort-tabs').addEventListener('click', handleSortClick);
   
   currentSort = 'date';
+  
+  // Animation d'apparition LENTE
+  const grid = document.getElementById('releases-grid');
+  grid.classList.add('grid-page-enter'); // Utilise l'animation de 0.4s
   renderGrid();
+  
+  await wait(50);
+  
+  void grid.offsetWidth;
+  grid.classList.remove('grid-page-enter');
 }
 
 async function handleSortClick(e) {
@@ -99,12 +118,19 @@ async function handleSortClick(e) {
     });
     btn.classList.add('active');
     
+    // Animation de tri RAPIDE (horizontale)
     const grid = document.getElementById('releases-grid');
     if (grid) {
-        grid.classList.add('fading');
-        await wait(150);
-        renderGrid();
-        grid.classList.remove('fading');
+        grid.classList.add('grid-sort-exit'); // Animation de sortie (0.2s)
+        await wait(200); // Attend 200ms (au lieu de 150 ou 300)
+        
+        renderGrid(); // Change le contenu
+        
+        grid.classList.remove('grid-sort-exit');
+        grid.classList.add('grid-sort-enter'); // Prépare l'entrée (0.2s)
+        
+        void grid.offsetWidth;
+        grid.classList.remove('grid-sort-enter'); // Animation d'entrée
     }
 }
 
@@ -175,18 +201,133 @@ function renderRelease(slug) {
   document.getElementById('play-release-btn').addEventListener('click', () => playRelease(r));
 }
 
-//--- ADMIN ---
-adminIcon.addEventListener('click', () => {
-  const p = prompt('Enter admin password:');
-  if (p !== '1234') return alert('Wrong password!');
-  window.location.hash = '#/admin';
+//--- FONCTIONS MODAL (Corrigées) ---
+
+// Renvoie une promesse qui se résout à la fin de l'animation de fermeture
+function closeModal() {
+    return new Promise(resolve => {
+        modalOverlay.classList.remove('visible');
+        setTimeout(() => {
+            modalOverlay.classList.add('hidden');
+            resolve(); // La promesse se résout une fois l'animation terminée
+        }, 300); // Doit correspondre à la transition CSS
+    });
+}
+
+function showCustomAlert(title, text) {
+    modalTitle.textContent = title;
+    modalText.innerHTML = text;
+    modalInputArea.classList.add('hidden');
+    modalSubmit.textContent = 'OK';
+    modalCancel.classList.add('hidden');
+    
+    modalOverlay.classList.remove('hidden');
+    requestAnimationFrame(() => modalOverlay.classList.add('visible'));
+
+    // Crée une promesse qui attend la fermeture
+    return new Promise(resolve => {
+        // Crée des gestionnaires de clics uniques pour CETTE alerte
+        const handleSubmit = async () => {
+            await closeModal();
+            cleanupListeners();
+            resolve(true);
+        };
+        
+        const handleOverlayClick = async (e) => {
+            if (e.target === modalOverlay) await handleSubmit();
+        };
+
+        const handleKeydown = async (e) => {
+            if (e.key === 'Escape' || e.key === 'Enter') await handleSubmit();
+        };
+
+        const cleanupListeners = () => {
+            modalSubmit.removeEventListener('click', handleSubmit);
+            modalOverlay.removeEventListener('click', handleOverlayClick);
+            window.removeEventListener('keydown', handleKeydown);
+        };
+
+        // Attache les écouteurs
+        modalSubmit.addEventListener('click', handleSubmit);
+        modalOverlay.addEventListener('click', handleOverlayClick);
+        window.addEventListener('keydown', handleKeydown);
+    });
+}
+
+function showCustomPrompt(title, text, placeholder) {
+    modalTitle.textContent = title;
+    modalText.innerHTML = text;
+    modalInputArea.classList.remove('hidden');
+    modalPassword.value = '';
+    modalPassword.placeholder = placeholder || '';
+    modalSubmit.textContent = 'Login';
+    modalCancel.classList.remove('hidden');
+
+    modalOverlay.classList.remove('hidden');
+    requestAnimationFrame(() => modalOverlay.classList.add('visible'));
+    
+    // Ligne de focus auto supprimée
+
+    // Crée une promesse qui attend la fermeture
+    return new Promise(resolve => {
+        // Crée des gestionnaires de clics uniques
+        const handleSubmit = async () => {
+            const value = modalPassword.value;
+            await closeModal();
+            cleanupListeners();
+            resolve(value);
+        };
+
+        const handleCancel = async () => {
+            await closeModal();
+            cleanupListeners();
+            resolve(null);
+        };
+        
+        const handleOverlayClick = async (e) => {
+            if (e.target === modalOverlay) await handleCancel();
+        };
+
+        const handleKeydown = async (e) => {
+            if (e.key === 'Escape') await handleCancel();
+            if (e.key === 'Enter') await handleSubmit();
+        };
+        
+        const cleanupListeners = () => {
+            modalSubmit.removeEventListener('click', handleSubmit);
+            modalCancel.removeEventListener('click', handleCancel);
+            modalOverlay.removeEventListener('click', handleOverlayClick);
+            window.removeEventListener('keydown', handleKeydown);
+        };
+
+        // Attache les écouteurs
+        modalSubmit.addEventListener('click', handleSubmit);
+        modalCancel.addEventListener('click', handleCancel);
+        modalOverlay.addEventListener('click', handleOverlayClick);
+        window.addEventListener('keydown', handleKeydown);
+    });
+}
+
+//--- LOGIQUE ADMIN ---
+adminIcon.addEventListener('click', async () => {
+  // 1. Attend la RÉPONSE ET la FERMETURE du prompt
+  const p = await showCustomPrompt('Admin Login', 'Enter admin password:', 'Password');
+  
+  if (p === '1234') {
+    window.location.hash = '#/admin';
+  } else if (p !== null) { // (null signifie 'Cancel')
+    // 2. Ouvre l'alerte SEULEMENT APRÈS la fermeture du prompt
+    await showCustomAlert('Error', 'Wrong password.');
+  }
 });
 
 function renderAdmin() {
   app.innerHTML = `<section>
+  <div class="page-header">
+    <a href="#" class="back-link">← Back to library</a>
+  </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
     <h2>Database Manager</h2>
-    <a href="#" class="btn secondary" style="padding:8px 16px;font-size:12px;">Exit</a>
   </div>
   <div class="admin-area">
   <p style="color:var(--muted); margin-bottom:12px;">Edit standard JSON format.</p>
@@ -197,8 +338,14 @@ function renderAdmin() {
   </div></div></section>`;
   
   document.getElementById('download-json').addEventListener('click', () => downloadFile('releases.json', document.getElementById('json-edit').value));
-  document.getElementById('apply-json').addEventListener('click', () => {
-    try { releases = JSON.parse(document.getElementById('json-edit').value); alert('Applied in memory.'); renderGrid(); } catch (e) { alert('JSON error: ' + e.message); }
+  
+  document.getElementById('apply-json').addEventListener('click', async () => {
+    try { 
+      releases = JSON.parse(document.getElementById('json-edit').value); 
+      await showCustomAlert('Success', 'Applied in memory.');
+    } catch (e) { 
+      await showCustomAlert('Error', 'JSON error: ' + e.message);
+    }
   });
 }
 
@@ -223,7 +370,7 @@ function playRelease(r) {
   
   playerDock.classList.add('active'); 
   updatePlayBtn();
-  updateSliderBackground(); // Initialise le fond du slider dès la lecture
+  updateSliderBackground();
 }
 
 function updatePlayBtn() {
@@ -246,26 +393,23 @@ function playPrev() { if(releases.length) playRelease(releases[(currentIndex - 1
 // Fonction pour mettre à jour l'arrière-plan du slider
 function updateSliderBackground() {
     const pct = seek.value || 0;
-    // Utilise les couleurs récupérées en JS
     seek.style.background = `linear-gradient(to right, ${paperColor} ${pct}%, ${trackColor} ${pct}%)`;
 }
 
 
 //--- INIT ---
 function init() {
-  // Récupère les couleurs du slider UNE SEULE FOIS (et s'assure qu'elles sont bien des chaînes)
   try {
       paperColor = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
-      trackColor = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim(); // Utilise --muted pour le gris du track, ou #444 si tu préfères un gris fixe
-      if (!paperColor) paperColor = '#ededed'; // Fallback
-      if (!trackColor) trackColor = '#444'; // Fallback
+      trackColor = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
+      if (!paperColor) paperColor = '#ededed';
+      if (!trackColor) trackColor = '#444';
   } catch (e) {
       console.error("Could not get CSS vars for slider, using fallbacks:", e);
       paperColor = '#ededed';
       trackColor = '#444';
   }
   
-  // Initialise l'arrière-plan du slider à 0% avant la lecture
   updateSliderBackground();
 
   btnPlay.addEventListener('click', togglePlay);
@@ -276,7 +420,7 @@ function init() {
       curTime.textContent = formatTime(audio.currentTime);
       const pct = (audio.currentTime / audio.duration * 100) || 0;
       seek.value = pct;
-      updateSliderBackground(); // Met à jour pendant la lecture
+      updateSliderBackground();
   });
   
   audio.addEventListener('loadedmetadata', () => { durTime.textContent = formatTime(audio.duration); });
@@ -286,8 +430,10 @@ function init() {
       if (!audio.duration) return; 
       const newTime = (seek.value / 100) * audio.duration;
       audio.currentTime = newTime;
-      updateSliderBackground(); // Met à jour pendant le glissement
+      updateSliderBackground();
   });
+  
+  // Les écouteurs de modal sont maintenant gérés dans les fonctions show...
   
   window.addEventListener('hashchange', router);
   document.getElementById('year').textContent = new Date().getFullYear();
