@@ -16,13 +16,26 @@
     "slug": "w0ndr-leavingearth",
     "title": "Leaving Earth",
     "date": "2025-11-20",
-    "cover": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Black_colour.jpg/960px-Black_colour.jpg?20170110114905",
+    "cover": "./tracks/covers/placeholder-cover.png",
     "audio": null,
     "exclusive": false,
-    "explicit": false,
+    "explicit": true,
     "stream_url": "https://soundcloud.com/t-m-t-r/yzote-meraki",
     "description": "Now available on streaming platforms.",
     "credits": "w0ndr",
+    "lyrics": ""
+  },
+  {
+    "slug": "lyndxn-circus",
+    "title": "circus",
+    "date": "2025-12-24",
+    "cover": "./tracks/covers/placeholder-cover.png",
+    "audio": "./tracks/Yzote_Meraki.wav",
+    "exclusive": true,
+    "explicit": false,
+    "stream_url": null,
+    "description": "Latest single from lyndxn.",
+    "credits": "lyndxn",
     "lyrics": ""
   }
 ]
