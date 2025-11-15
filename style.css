@@ -395,6 +395,7 @@ a.card-link {
   letter-spacing: -1px;
   margin: 0 0 8px 0;
   line-height: 1.1;
+  margin-left: -5px;
 }
 
 .release-artist {
@@ -773,7 +774,7 @@ textarea.jsonedit:focus {
   }
   .release-hero img {
     width: 100%;
-    max-width: 230px; /* MODIFIÉ : 230px */
+    max-width: 300px; /* MODIFIÉ : 230px */
     height: auto;
     border-radius: var(--radius-md);
     align-self: center;
