@@ -1,11 +1,13 @@
 [
-
   {
     "slug": "yzote-meraki",
     "title": "Meraki",
     "date": "2025-11-15",
     "cover": "./tracks/covers/yzote_merakicover.png",
+    "artist_pfp": "./artists/yzote.png",
     "audio": "./tracks/Yzote_Meraki.wav",
+    "exclusive": true,
+    "stream_url": null,
     "description": "Latest single",
     "credits": "yzote",
     "lyrics": ""
@@ -15,8 +17,11 @@
     "title": "test",
     "date": "2025-11-10",
     "cover": "./tracks/covers/yzote_merakicover.png",
-    "audio": "./tracks/Yzote_Meraki.wav",
-    "description": "Latest single",
+    "artist_pfp": "./artists/test.png",
+    "audio": null,
+    "exclusive": false,
+    "stream_url": "https://soundcloud.com/t-m-t-r/yzote-meraki",
+    "description": "Also available on streaming platforms.",
     "credits": "test",
     "lyrics": ""
   }
