@@ -873,7 +873,7 @@ textarea.jsonedit:focus {
     max-width: 250px;
     height: auto;
     border-radius: var(--radius-md);
-    align-self: center; /* Cover centrée */
+    align-self: left; /* Cover centrée */
   }
   .release-details {
     text-align: left; /* Aligne tout le texte à gauche PAR DÉFAUT */
@@ -882,12 +882,12 @@ textarea.jsonedit:focus {
   
   .release-title { 
     font-size: 32px; 
-    text-align: center; /* Centre le titre */
+    text-align: left; /* Centre le titre */
   }
   .release-artist { 
     font-size: 16px; 
     margin-bottom: 24px; 
-    text-align: center; /* Centre l'artiste */
+    text-align: left; /* Centre l'artiste */
   }
   
   .release-desc { 
@@ -908,7 +908,7 @@ textarea.jsonedit:focus {
   }
   
   .release-details > div:nth-child(3) { /* Conteneur de boutons */
-    justify-content: center; /* Boutons centrés */
+    justify-content: left; /* Boutons centrés */
   }
 
   /* Player */
