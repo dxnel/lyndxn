@@ -24,20 +24,22 @@ const modalOverlay = document.getElementById('modal-overlay'),
 
 let releases = [], currentIndex = 0, audio = new Audio(), isPlaying = false;
 let currentSort = 'date';
-let currentView = 'grid'; // État de la vue
+let currentView = 'grid';
+let isGrouped = false;
 let paperColor, trackColor;
-// modalResolve est maintenant géré localement dans chaque promesse
+// modalResolve est maintenant géré localement
 
 // --- ICONS ---
 const SVG_PLAY = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const SVG_PAUSE = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-const SVG_GRID = '<svg fill="currentColor" viewBox="0 0 16 16"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3A1.5 1.5 0 0 1 15 10.5v3A1.5 1.5 0 0 1 13.5 15h-3A1.5 1.5 0 0 1 9 13.5v-3z"/></svg>';
-const SVG_LIST = '<svg fill="currentColor" viewBox="0 0 16 16"><path d="M2 3.5A.5.5 0 0 1 2.5 3h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 4A.5.5 0 0 1 2.5 7h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 4A.5.5 0 0 1 2.5 11h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>';
+// NOUVELLES ICÔNES (FILLED)
+const SVG_GRID = '<svg fill="currentColor" viewBox="0 0 16 16"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM9 2.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zM9 10.5A1.5 1.5 0 0 1 10.5 9h3A1.5 1.5 0 0 1 15 10.5v3A1.5 1.5 0 0 1 13.5 15h-3A1.5 1.5 0 0 1 9 13.5v-3z"/></svg>';
+const SVG_LIST = '<svg fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>';
+const SVG_GROUP = '<svg fill="currentColor" viewBox="0 0 16 16" style="width:14px; height:14px;"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>';
 
 
 //--- UTIL ---
-// MODIFIÉ : Correction de la syntaxe de ' (remplacé ''' par '&#39;')
-const escapeHtml = s => s || s === 0 ? s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) : '';
+const escapeHtml = s => s || s === 0 ? s.replace(/[&<>"']/g, c => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": '&#39;' })[c]) : '';
 const formatTime = s => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 const downloadFile = (name, text) => { const blob = new Blob([text], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
 
@@ -97,10 +99,15 @@ async function router() {
 async function renderHome() {
   app.innerHTML = `
     <div class="home-header">
-      <h2>Library</h2>
-      <div class="view-toggle" id="view-toggle">
-        <button class="view-btn ${currentView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid View">${SVG_GRID}</button>
-        <button class="view-btn ${currentView === 'list' ? 'active' : ''}" data-view="list" title="List View">${SVG_LIST}</button>
+      <h2>Releases</h2>
+      <div class="library-controls" id="library-controls">
+        <div class="control-group">
+          <button class="view-btn" data-action="toggle-group" title="Group by Artist" id="group-toggle-btn">${SVG_GROUP}</button>
+        </div>
+        <div class="control-group" id="view-toggle">
+          <button class="view-btn ${currentView === 'grid' ? 'active' : ''}" data-action="toggle-view" data-view="grid" title="Grid View">${SVG_GRID}</button>
+          <button class="view-btn ${currentView === 'list' ? 'active' : ''}" data-action="toggle-view" data-view="list" title="List View">${SVG_LIST}</button>
+        </div>
       </div>
       <div class="tabs" id="sort-tabs">
         <button class="tab-btn active" data-sort="date">Recent</button>
@@ -112,9 +119,10 @@ async function renderHome() {
     </div>`;
     
   document.getElementById('sort-tabs').addEventListener('click', handleSortClick);
-  document.getElementById('view-toggle').addEventListener('click', handleViewClick);
+  document.getElementById('library-controls').addEventListener('click', handleControlsClick);
   
   currentSort = 'date';
+  isGrouped = false;
   
   const gridContainer = document.getElementById('grid-container');
   gridContainer.classList.add('grid-page-enter');
@@ -143,22 +151,30 @@ function handleSortClick(e) {
     renderGrid();
 }
 
-async function handleViewClick(e) {
+async function handleControlsClick(e) {
     const btn = e.target.closest('.view-btn');
     if (!btn) return;
 
-    const view = btn.dataset.view;
-    if (view === currentView) return;
-
-    currentView = view;
-
-    document.querySelectorAll('#view-toggle .view-btn').forEach(b => {
-        b.classList.remove('active');
-    });
-    btn.classList.add('active');
-
+    const action = btn.dataset.action;
     const gridContainer = document.getElementById('grid-container');
-    if (gridContainer) {
+    let needsReflow = false;
+
+    if (action === 'toggle-view') {
+        const view = btn.dataset.view;
+        if (view === currentView) return;
+        currentView = view;
+        
+        document.querySelector('[data-view="grid"]').classList.toggle('active', currentView === 'grid');
+        document.querySelector('[data-view="list"]').classList.toggle('active', currentView === 'list');
+        needsReflow = true;
+        
+    } else if (action === 'toggle-group') {
+        isGrouped = !isGrouped;
+        btn.classList.toggle('active', isGrouped);
+        needsReflow = true;
+    }
+
+    if (needsReflow && gridContainer) {
         gridContainer.classList.add('fading');
         await wait(150);
         renderGrid();
@@ -175,20 +191,18 @@ function renderGrid() {
         return; 
     }
 
-    let sortedReleases = [...releases];
-    if (currentSort === 'date') {
-        sortedReleases.sort((a, b) => new Date(b.date) - new Date(a.date));
-    } else if (currentSort === 'title') {
-        sortedReleases.sort((a, b) => a.title.localeCompare(b.title));
-    } else if (currentSort === 'artist') {
-        sortedReleases.sort((a, b) => a.credits.localeCompare(b.credits));
-    }
-
     let html = '';
     
-    if (currentView === 'grid') {
-        html = `<div class="grid">
-            ${sortedReleases.map(r => `
+    const sortFn = (a, b) => {
+        if (currentSort === 'date') return new Date(b.date) - new Date(a.date);
+        if (currentSort === 'title') return a.title.localeCompare(b.title);
+        if (currentSort === 'artist') return a.credits.localeCompare(b.credits);
+        return 0;
+    };
+
+    const renderItem = (r) => {
+        if (currentView === 'grid') {
+            return `
             <div class="card">
                 <a href="#/release/${r.slug}" class="card-link">
                     <div class="card-image-wrap">
@@ -199,11 +213,9 @@ function renderGrid() {
                         <div class="meta">${escapeHtml(r.credits)}</div>
                     </div>
                 </a>
-            </div>`).join('')}
-        </div>`;
-    } else {
-        html = `<div class="list">
-            ${sortedReleases.map(r => `
+            </div>`;
+        } else {
+            return `
             <a href="#/release/${r.slug}" class="list-item">
                 <img src="${r.cover}" alt="${r.title}" loading="lazy">
                 <div class="list-item-meta">
@@ -211,9 +223,45 @@ function renderGrid() {
                     <div class="meta">${escapeHtml(r.credits)}</div>
                 </div>
                 <div class="list-item-date">${formatDate(r.date)}</div>
-            </a>
-            `).join('')}
-        </div>`;
+            </a>`;
+        }
+    };
+
+    if (isGrouped) {
+        const releasesByArtist = releases.reduce((acc, release) => {
+            const artist = release.credits || 'Unknown Artist';
+            if (!acc[artist]) acc[artist] = [];
+            acc[artist].push(release);
+            return acc;
+        }, {});
+
+        const sortedArtists = Object.keys(releasesByArtist).sort((a, b) => a.localeCompare(b));
+
+        const listClass = currentView === 'list' ? 'list' : '';
+        html += `<div class="${listClass}">`;
+        
+        for (const artist of sortedArtists) {
+            html += `<h2 class="artist-group-header">${escapeHtml(artist)}</h2>`;
+            const artistTracks = releasesByArtist[artist].sort(sortFn);
+            
+            if (currentView === 'grid') {
+                html += '<div class="grid">';
+                html += artistTracks.map(renderItem).join('');
+                html += '</div>';
+            } else {
+                html += artistTracks.map(renderItem).join('');
+            }
+        }
+        
+        html += `</div>`;
+        
+    } else {
+        const sortedReleases = [...releases].sort(sortFn);
+        if (currentView === 'grid') {
+            html = `<div class="grid">${sortedReleases.map(renderItem).join('')}</div>`;
+        } else {
+            html = `<div class="list">${sortedReleases.map(renderItem).join('')}</div>`;
+        }
     }
 
     gridContainer.innerHTML = html;
@@ -228,7 +276,7 @@ function renderRelease(slug) {
   
   const html = `
   <div class="page-header">
-    <a href="#" class="back-link">← Back to library</a>
+    <a href="#" class="back-link">← Back to releases</a>
   </div>
 
   <section class="release-hero">
@@ -247,7 +295,7 @@ function renderRelease(slug) {
       
       <div class="release-date-bottom">Release date: ${formatDate(r.date)}</div>
       
-      ${r.lyrics ? `<h3 style="margin-top:40px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--muted);">Lyrics</h3><p class="release-desc" style="color:var(--muted);">${r.lyrics.replace(/\n/g, '<br>')}</p>` : ''}
+      ${r.lyrics ? `<h3 style="margin-top:40px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--muted);">Lyrics</h3><p class="release-desc">${r.lyrics.replace(/\n/g, '<br>')}</p>` : ''}
       
     </div>
   </section>`;
@@ -355,7 +403,7 @@ adminIcon.addEventListener('click', async () => {
 function renderAdmin() {
   app.innerHTML = `<section>
   <div class="page-header">
-    <a href="#" class="back-link">← Back to library</a>
+    <a href="#" class="back-link">← Back to releases</a>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
     <h2>Database Manager</h2>
@@ -388,36 +436,43 @@ function updateMediaSession(r) {
       artist: r.credits,
       album: 't.m.t.r.',
       artwork: [
-        { src: r.cover, sizes: '512x512', type: 'image/png' }, // J'assume png/jpg, ajuste si besoin
+        { src: r.cover, sizes: '512x512', type: 'image/png' },
       ]
     });
   }
 }
 
+// MODIFIÉ : Correction du bug de mise à jour du player
 function playRelease(r) {
   currentIndex = releases.findIndex(x => x.slug === r.slug); if (currentIndex === -1) return;
   const isSameTrack = audio.src.includes(r.audio.split('/').pop());
   
+  // Met à jour l'UI (titre, cover, etc) À CHAQUE FOIS
+  dockCover.src = r.cover; 
+  dockTitle.textContent = r.title; 
+  dockSub.textContent = r.credits;
+  downloadLink.href = r.audio; 
+  downloadLink.download = `${r.slug}.mp3`;
+  updateMediaSession(r);
+  
   if(!isSameTrack) {
+      // RESET du player si nouveau morceau
       audio.src = r.audio;
-      dockCover.src = r.cover; 
-      dockTitle.textContent = r.title; 
-      dockSub.textContent = r.credits;
-      downloadLink.href = r.audio; 
-      downloadLink.download = `${r.slug}.mp3`;
+      seek.value = 0;
+      curTime.textContent = '0:00';
+      updateSliderBackground(0); // Force le fond à 0
+      
       audio.play();
       isPlaying = true;
   } else {
-      togglePlay();
+      togglePlay(); // Gère play/pause si c'est la même piste
   }
   
   playerDock.classList.add('active'); 
   updatePlayBtn();
-  updateSliderBackground();
-  updateMediaSession(r);
   
   if ('mediaSession' in navigator) {
-    navigator.mediaSession.playbackState = 'playing';
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
   }
 }
 
@@ -442,9 +497,10 @@ function togglePlay() {
 function playNext() { if(releases.length) playRelease(releases[(currentIndex + 1) % releases.length]); }
 function playPrev() { if(releases.length) playRelease(releases[(currentIndex - 1 + releases.length) % releases.length]); }
 
-function updateSliderBackground() {
-    const pct = seek.value || 0;
-    seek.style.background = `linear-gradient(to right, ${paperColor} ${pct}%, ${trackColor} ${pct}%)`;
+// MODIFIÉ : Accepte un 'pct' optionnel pour forcer le reset
+function updateSliderBackground(pct) {
+    const percent = pct !== undefined ? pct : seek.value || 0;
+    seek.style.background = `linear-gradient(to right, ${paperColor} ${percent}%, ${trackColor} ${percent}%)`;
 }
 
 
@@ -461,7 +517,7 @@ function init() {
       trackColor = '#444';
   }
   
-  updateSliderBackground();
+  updateSliderBackground(0); // Initialise à 0
 
   btnPlay.addEventListener('click', togglePlay);
   btnNext.addEventListener('click', playNext);
@@ -490,7 +546,7 @@ function init() {
     navigator.mediaSession.setActionHandler('play', togglePlay);
     navigator.mediaSession.setActionHandler('pause', togglePlay);
   }
-
+  
   window.addEventListener('hashchange', router);
   document.getElementById('year').textContent = new Date().getFullYear();
   

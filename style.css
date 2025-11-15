@@ -67,20 +67,20 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
 
 .brand a {
   font-weight: 700;
-  font-size: 20px;
-  letter-spacing: -0.5px;
+  text-decoration: none;
   color: var(--accent);
+  font-size: 22px; 
+  letter-spacing: -0.5px;
 }
 
 .nav-right div {
   color: var(--muted);
-  transition: color 0.2s, transform 0.2s;
+  transition: color 0.2s;
   padding: 8px;
   cursor: pointer;
 }
 .nav-right div:hover {
   color: var(--accent);
-  transform: rotate(45deg);
 }
 
 /* --- Transitions System (JS Controlled) --- */
@@ -104,7 +104,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
 /* --- Home: Header & Tabs --- */
 .home-header {
   display: flex;
-  flex-wrap: wrap; /* Permet le wrapping */
+  flex-wrap: wrap; 
   justify-content: space-between;
   align-items: center;
   padding-top: 40px;
@@ -124,8 +124,9 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   display: flex; 
   gap: 8px; 
   justify-content: flex-start;
-  order: 3; /* Passe en 3ème position (nouvelle ligne) */
+  order: 3;
   flex-basis: 100%;
+  overflow-x: auto;
 }
 
 .tab-btn {
@@ -145,12 +146,17 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
 .tab-btn:hover { background: var(--surface-hover); color: var(--paper); }
 .tab-btn.active { background: var(--paper); color: var(--bg); font-weight: 600; }
 
-/* Sélecteur de Vue */
-.view-toggle {
+.library-controls {
+  display: flex;
+  gap: 20px;
+  order: 2;
+}
+
+.control-group {
   display: flex;
   gap: 8px;
-  order: 2; /* Reste sur la première ligne */
 }
+
 .view-btn {
   background: var(--surface);
   color: var(--muted);
@@ -199,6 +205,24 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 32px;
 }
+
+.artist-group-header {
+  font-size: 24px;
+  letter-spacing: -0.5px;
+  font-weight: 600;
+  color: var(--paper);
+  margin-top: 48px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+  padding-left: 0;
+}
+.grid-container > .artist-group-header:first-of-type,
+.list > .artist-group-header:first-of-type {
+  margin-top: 0;
+  border-top: 0;
+}
+
 
 .card {
   display: flex;
@@ -266,6 +290,17 @@ a.card-link {
   display: flex;
   flex-direction: column;
   border-top: 1px solid var(--border);
+}
+/* MODIFIÉ : Style de titre de groupe (POUR LA VUE LISTE) */
+.list > .artist-group-header {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-top: 0; /* CHANGÉ */
+  margin-bottom: 0;
+  border-top: 1px solid var(--border); /* CHANGÉ */
+  border-bottom: 0;
+  padding: 14px 10px;
 }
 .list-item {
   display: flex;
@@ -703,13 +738,17 @@ textarea.jsonedit:focus {
     padding: 0 18px;
   }
   
-  /* MODIFIÉ : Layout du header mobile supprimé */
-  /* Les styles desktop (flex-wrap) sont maintenant hérités */
-  /* Assure que les onglets ne sont pas centrés */
-  .tabs {
-    justify-content: flex-start;
+  .home-header {
+     gap: 16px;
   }
-  
+  .tabs {
+    flex-basis: 100%;
+    order: 3;
+  }
+  .library-controls {
+    order: 2;
+  }
+
   .grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 24px;
@@ -725,32 +764,42 @@ textarea.jsonedit:focus {
     font-size: 12px;
   }
 
-  /* Layout page Release mobile */
+  /* Layout page Release mobile (centré) */
   .release-hero { 
-    display: flex; /* Reviens à flex pour la colonne */
+    display: flex;
     flex-direction: column; 
     gap: 24px; 
-    align-items: center; /* Centre les éléments */
-    /* Supprime grid-template-columns */
+    align-items: center;
   }
   .release-hero img {
     width: 100%;
-    max-width: 350px; /* Limite la taille de la cover */
-    align-self: center; /* Centre l'image */
+    max-width: 230px; /* MODIFIÉ : 230px */
     height: auto;
+    border-radius: var(--radius-md);
+    align-self: center;
   }
   .release-details {
-    text-align: center; /* Centre le texte */
+    text-align: center;
     padding-top: 0;
   }
   
   .release-title { font-size: 32px; }
   .release-artist { font-size: 16px; margin-bottom: 24px; }
-  .release-desc { font-size: 14px; max-width: none; }
-  .release-date-bottom { text-align: center; }
   
-  .release-details > div:nth-child(3) { /* Cible le conteneur des boutons Play/Download */
-    justify-content: center; /* Centre les boutons */
+  .release-desc { 
+    font-size: 14px; 
+    max-width: none; 
+    text-align: left;
+  }
+  .release-date-bottom { 
+    text-align: left; 
+  }
+  .release-details h3 { /* Titre "Lyrics" */
+    text-align: left;
+  }
+  
+  .release-details > div:nth-child(3) {
+    justify-content: center;
   }
 
   /* Player */
@@ -762,6 +811,9 @@ textarea.jsonedit:focus {
   }
   .player-meta {
     text-align: left;
+  }
+  .player-right {
+    display: none;
   }
   
   #player-dock { 
