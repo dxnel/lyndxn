@@ -35,8 +35,8 @@ const SVG_PAUSE = '<i class="fi fi-sr-pause"></i>';
 const SVG_GRID = '<i class="fi fi-sr-apps"></i>';
 const SVG_LIST = '<i class="fi fi-sr-list"></i>';
 const SVG_GROUP = '<i class="fi fi-sr-user"></i>';
-const SVG_LISTEN = '<i class="fi fi-sr-headphones"></i>';
-// NOUVELLES ICÔNES DE BADGE
+const SVG_LISTEN = '<i class="fi fi-sr-share-square"></i>';
+// MODIFIÉ : Icônes de badge
 const ICON_EXPLICIT = '<i class="fi fi-sr-circle-e"></i>';
 const ICON_EXCLUSIVE = '<i class="fi fi-sr-play"></i>';
 
@@ -60,18 +60,16 @@ const formatDate = (dateString) => {
     }
 };
 
-// NOUVEAU : Fonction pour générer les badges
+// MODIFIÉ : Fonction pour générer les badges
 function createBadgeHtml(r) {
   let html = '';
   // Hiérarchie : Explicite d'abord
   if (r.explicit) {
     html += ` <div class="badge explicit" title="Explicit">${ICON_EXPLICIT}</div>`;
   }
-  // `exclusive` est déjà vérifié dans le bouton, mais on peut le mettre ici aussi
-  if (r.exclusive !== false) { 
+  if (r.exclusive !== false) { // Affiche si 'exclusive' est true ou non défini
     html += ` <div class="badge exclusive" title="Exclusive">${ICON_EXCLUSIVE}</div>`;
   }
-  // Conteneur uniquement s'il y a des badges
   return html.length > 0 ? `<div class="badge-container">${html}</div>` : '';
 }
 
@@ -232,7 +230,7 @@ function renderGrid() {
                             <div class="title">${escapeHtml(r.title)}</div>
                             ${createBadgeHtml(r)}
                         </div>
-                        <div class="meta">${escapeHtml(r.credits)}</div>
+                        <div class="meta"><span>${escapeHtml(r.credits)}</span></div>
                     </div>
                 </a>
             </div>`;
@@ -243,11 +241,13 @@ function renderGrid() {
                 <div class="list-item-meta">
                     <div class="list-title-row">
                         <span class="title">${escapeHtml(r.title)}</span>
-                        ${createBadgeHtml(r)}
                     </div>
                     <div class="meta">${escapeHtml(r.credits)}</div>
                 </div>
-                <div class="list-item-date">${formatDate(r.date)}</div>
+                <div class="list-date-row">
+                    <span>${formatDate(r.date)}</span>
+                    ${createBadgeHtml(r)}
+                </div>
             </a>`;
         }
     };

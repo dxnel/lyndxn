@@ -270,7 +270,6 @@ a.card-link {
   gap: 4px;
 }
 
-/* NOUVEAU : Conteneur pour titre + badges (Grid) */
 .card-title-row {
   display: flex;
   justify-content: space-between;
@@ -286,7 +285,7 @@ a.card-link {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-grow: 1; /* Le titre prend la place */
+  flex-grow: 1; 
 }
 
 .card .meta {
@@ -340,7 +339,6 @@ a.card-link {
   gap: 2px;
   min-width: 0;
 }
-/* NOUVEAU : Conteneur pour titre + badges (List) */
 .list-title-row {
   display: flex;
   justify-content: space-between;
@@ -354,6 +352,7 @@ a.card-link {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-grow: 1; /* Le span prend la place */
 }
 .list-item-meta .meta {
   font-size: 13px;
@@ -362,13 +361,21 @@ a.card-link {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.list-item-date {
+/* MODIFIÉ : Conteneur pour date + badges (List) */
+.list-date-row {
   font-size: 13px;
   color: var(--muted);
-  width: 85px;
+  width: auto; /* Ajustement pour flex */
   text-align: right;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.list-date-row .badge-container {
+  margin-left: 4px;
 }
 
 
@@ -432,29 +439,32 @@ a.card-link {
   max-width: 500px;
 }
 
-/* Date de release (sous la description) */
+/* MODIFIÉ : Conteneur pour date + badges (Release) */
 .release-date-bottom {
   margin-top: -16px;
-  margin-bottom: 16px; /* Réduit pour laisser place aux badges */
+  margin-bottom: 16px;
   font-size: 14px;
   color: var(--muted);
   font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* NOUVEAU : Conteneur de badges pour la page Release */
+/* Conteneur de badges pour la page Release */
 .release-badges {
   display: flex;
   gap: 8px;
   margin-bottom: 32px;
-  margin-top: 32px;
+  margin-top: 30px; /* Géré par le conteneur parent */
 }
 
 
-/* --- NOUVEAU : Badges --- */
+/* --- Badges --- */
 .badge-container {
   display: flex;
   gap: 6px;
-  flex-shrink: 0; /* Empêche les badges de se réduire */
+  flex-shrink: 0; 
 }
 .badge {
   width: 18px;
@@ -478,7 +488,6 @@ a.card-link {
   background: var(--muted);
   color: var(--bg);
 }
-/* Badges plus grands sur la page Release */
 .release-badges .badge {
   width: 22px;
   height: 22px;
@@ -852,47 +861,54 @@ textarea.jsonedit:focus {
     font-size: 12px;
   }
 
-  /* Layout page Release mobile (centré) */
+  /* MODIFIÉ : Layout page Release */
   .release-hero { 
     display: flex;
     flex-direction: column; 
     gap: 24px; 
-    align-items: center;
+    align-items: stretch; /* Le conteneur prend toute la largeur */
   }
   .release-hero img {
     width: 100%;
     max-width: 250px;
     height: auto;
     border-radius: var(--radius-md);
-    align-self: center;
+    align-self: center; /* Cover centrée */
   }
   .release-details {
-    text-align: center;
+    text-align: left; /* Aligne tout le texte à gauche PAR DÉFAUT */
     padding-top: 0;
   }
   
-  .release-title { font-size: 32px; }
-  .release-artist { font-size: 16px; margin-bottom: 24px; }
+  .release-title { 
+    font-size: 32px; 
+    text-align: center; /* Centre le titre */
+  }
+  .release-artist { 
+    font-size: 16px; 
+    margin-bottom: 24px; 
+    text-align: center; /* Centre l'artiste */
+  }
   
   .release-desc { 
     font-size: 14px; 
     max-width: none; 
-    text-align: left;
+    text-align: left; /* Description alignée à gauche */
   }
   .release-date-bottom { 
     text-align: left; 
-    justify-content: flex-start; /* Aligne les badges à gauche */
-    margin-bottom: 16px;
+    justify-content: flex-start;
+    margin-bottom: 8px;
   }
   .release-badges {
-    justify-content: flex-start; /* Aligne les badges à gauche */
+    justify-content: flex-start;
   }
   .release-details h3 { /* Titre "Lyrics" */
     text-align: left;
   }
   
-  .release-details > div:nth-child(3) {
-    justify-content: center;
+  .release-details > div:nth-child(3) { /* Conteneur de boutons */
+    justify-content: center; /* Boutons centrés */
   }
 
   /* Player */
