@@ -9,5 +9,15 @@
     "description": "Latest single",
     "credits": "yzote",
     "lyrics": ""
+  },
+  {
+    "slug": "test-test",
+    "title": "test",
+    "date": "2025-11-10",
+    "cover": "./tracks/covers/yzote_merakicover.png",
+    "audio": "./tracks/Yzote_Meraki.wav",
+    "description": "Latest single",
+    "credits": "test",
+    "lyrics": ""
   }
 ]
