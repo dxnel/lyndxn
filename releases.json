@@ -1,28 +1,28 @@
 [
   {
     "slug": "yzote-meraki",
-    "title": "Meraki",
-    "date": "2025-11-15",
-    "cover": "./tracks/covers/yzote_merakicover.png",
+    "title": "meraki",
+    "date": "2025-11-16",
+    "cover": "./tracks/covers/yzote_merakicover500.png",
     "audio": "./tracks/Yzote_Meraki.wav",
     "exclusive": true,
-    "explicit": true,
+    "explicit": false,
     "stream_url": null,
-    "description": "Latest single",
+    "description": "Latest single from Yzote.",
     "credits": "yzote",
     "lyrics": ""
   },
   {
-    "slug": "test-test",
-    "title": "test",
-    "date": "2025-11-10",
-    "cover": "./tracks/covers/yzote_merakicover.png",
+    "slug": "w0ndr-leavingearth",
+    "title": "Leaving Earth",
+    "date": "2025-11-20",
+    "cover": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Black_colour.jpg/960px-Black_colour.jpg?20170110114905",
     "audio": null,
     "exclusive": false,
     "explicit": false,
     "stream_url": "https://soundcloud.com/t-m-t-r/yzote-meraki",
-    "description": "Also available on streaming platforms.",
-    "credits": "test",
+    "description": "Now available on streaming platforms.",
+    "credits": "w0ndr",
     "lyrics": ""
   }
 ]

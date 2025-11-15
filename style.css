@@ -78,7 +78,7 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   transition: color 0.2s;
   padding: 8px;
   cursor: pointer;
-  font-size: 20px; /* Ajuste la taille de l'icône */
+  font-size: 20px; 
   display: flex;
   align-items: center;
 }
@@ -172,10 +172,10 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   justify-content: center;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
-  font-size: 16px; /* Taille pour icônes Flaticon */
+  font-size: 16px; 
 }
 .view-btn i {
-  line-height: 0; /* Corrige l'alignement vertical de Flaticon */
+  line-height: 0; 
 }
 .view-btn:hover {
   background: var(--surface-hover);
@@ -270,6 +270,14 @@ a.card-link {
   gap: 4px;
 }
 
+/* NOUVEAU : Conteneur pour titre + badges (Grid) */
+.card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
 .card .title {
   font-weight: 600;
   font-size: 16px;
@@ -278,6 +286,7 @@ a.card-link {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-grow: 1; /* Le titre prend la place */
 }
 
 .card .meta {
@@ -331,7 +340,14 @@ a.card-link {
   gap: 2px;
   min-width: 0;
 }
-.list-item-meta .title {
+/* NOUVEAU : Conteneur pour titre + badges (List) */
+.list-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.list-title-row .title {
   font-weight: 600;
   font-size: 15px;
   color: var(--paper);
@@ -400,8 +416,6 @@ a.card-link {
   margin-left: 0;
 }
 
-/* SUPPRIMÉ : .release-artist-container et .artist-pfp */
-
 .release-artist {
   font-size: 18px;
   color: var(--muted);
@@ -421,10 +435,57 @@ a.card-link {
 /* Date de release (sous la description) */
 .release-date-bottom {
   margin-top: -16px;
-  margin-bottom: 32px;
+  margin-bottom: 16px; /* Réduit pour laisser place aux badges */
   font-size: 14px;
   color: var(--muted);
   font-style: italic;
+}
+
+/* NOUVEAU : Conteneur de badges pour la page Release */
+.release-badges {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 32px;
+  margin-top: 32px;
+}
+
+
+/* --- NOUVEAU : Badges --- */
+.badge-container {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0; /* Empêche les badges de se réduire */
+}
+.badge {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.badge i {
+  line-height: 0;
+  font-size: 10px;
+}
+.badge.explicit {
+  background: var(--muted);
+  color: var(--bg);
+}
+.badge.exclusive {
+  background: var(--muted);
+  color: var(--bg);
+}
+/* Badges plus grands sur la page Release */
+.release-badges .badge {
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+}
+.release-badges .badge i {
+  font-size: 12px;
 }
 
 
@@ -444,7 +505,6 @@ a.card-link {
   cursor: pointer;
   transition: transform 0.2s, opacity 0.2s;
 }
-/* Style pour les icônes Flaticon DANS les boutons */
 .btn i {
   font-size: 14px;
   line-height: 0;
@@ -565,7 +625,7 @@ a.card-link {
   justify-content: center;
   opacity: 0.8;
   transition: opacity 0.2s, transform 0.2s;
-  font-size: 20px; /* Taille icônes Préc/Suivant */
+  font-size: 20px;
 }
 .player-controls button i {
   line-height: 0;
@@ -579,12 +639,15 @@ a.card-link {
   background: var(--paper) !important;
   color: var(--bg) !important;
   opacity: 1 !important;
-  font-size: 24px; /* Taille icône Play */
+  font-size: 24px;
 }
-/* Ajustement spécifique pour l'icône Play de Flaticon */
 .play-fab i.fi-sr-play {
   margin-left: 3px;
 }
+.play-fab i.fi-sr-pause {
+  font-size: 20px;
+}
+
 
 .scrubber {
   width: 100%;
@@ -632,7 +695,7 @@ input[type=range]::-webkit-slider-runnable-track {
 .icon-btn {
   color: var(--muted);
   transition: color 0.2s;
-  font-size: 20px; /* Taille icône Download */
+  font-size: 20px;
   display: flex;
   align-items: center;
 }
@@ -809,8 +872,7 @@ textarea.jsonedit:focus {
   }
   
   .release-title { font-size: 32px; }
-  .release-artist-container { justify-content: center; }
-  .release-artist { font-size: 16px; margin-bottom: 0; }
+  .release-artist { font-size: 16px; margin-bottom: 24px; }
   
   .release-desc { 
     font-size: 14px; 
@@ -819,12 +881,17 @@ textarea.jsonedit:focus {
   }
   .release-date-bottom { 
     text-align: left; 
+    justify-content: flex-start; /* Aligne les badges à gauche */
+    margin-bottom: 16px;
+  }
+  .release-badges {
+    justify-content: flex-start; /* Aligne les badges à gauche */
   }
   .release-details h3 { /* Titre "Lyrics" */
     text-align: left;
   }
   
-  .release-details > div:nth-child(4) {
+  .release-details > div:nth-child(3) {
     justify-content: center;
   }
 

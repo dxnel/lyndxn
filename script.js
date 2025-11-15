@@ -29,13 +29,16 @@ let isGrouped = false;
 let paperColor, trackColor;
 // modalResolve est maintenant géré localement
 
-// --- ICONS (MODIFIÉES POUR FLATICON) ---
+// --- ICONS ---
 const SVG_PLAY = '<i class="fi fi-sr-play"></i>';
 const SVG_PAUSE = '<i class="fi fi-sr-pause"></i>';
 const SVG_GRID = '<i class="fi fi-sr-apps"></i>';
 const SVG_LIST = '<i class="fi fi-sr-list"></i>';
 const SVG_GROUP = '<i class="fi fi-sr-user"></i>';
 const SVG_LISTEN = '<i class="fi fi-sr-headphones"></i>';
+// NOUVELLES ICÔNES DE BADGE
+const ICON_EXPLICIT = '<i class="fi fi-sr-circle-e"></i>';
+const ICON_EXCLUSIVE = '<i class="fi fi-sr-play"></i>';
 
 
 //--- UTIL ---
@@ -56,6 +59,21 @@ const formatDate = (dateString) => {
         return dateString;
     }
 };
+
+// NOUVEAU : Fonction pour générer les badges
+function createBadgeHtml(r) {
+  let html = '';
+  // Hiérarchie : Explicite d'abord
+  if (r.explicit) {
+    html += ` <div class="badge explicit" title="Explicit">${ICON_EXPLICIT}</div>`;
+  }
+  // `exclusive` est déjà vérifié dans le bouton, mais on peut le mettre ici aussi
+  if (r.exclusive !== false) { 
+    html += ` <div class="badge exclusive" title="Exclusive">${ICON_EXCLUSIVE}</div>`;
+  }
+  // Conteneur uniquement s'il y a des badges
+  return html.length > 0 ? `<div class="badge-container">${html}</div>` : '';
+}
 
 //--- FETCH ---
 async function loadReleases() {
@@ -100,7 +118,7 @@ async function router() {
 async function renderHome() {
   app.innerHTML = `
     <div class="home-header">
-      <h2>Releases</h2>
+      <h2>Library</h2>
       <div class="library-controls" id="library-controls">
         <div class="control-group">
           <button class="view-btn" data-action="toggle-group" title="Group by Artist" id="group-toggle-btn">${SVG_GROUP}</button>
@@ -210,7 +228,10 @@ function renderGrid() {
                         <img src="${r.cover}" alt="${r.title}" loading="lazy">
                     </div>
                     <div class="card-text">
-                        <div class="title">${escapeHtml(r.title)}</div>
+                        <div class="card-title-row">
+                            <div class="title">${escapeHtml(r.title)}</div>
+                            ${createBadgeHtml(r)}
+                        </div>
                         <div class="meta">${escapeHtml(r.credits)}</div>
                     </div>
                 </a>
@@ -220,7 +241,10 @@ function renderGrid() {
             <a href="#/release/${r.slug}" class="list-item">
                 <img src="${r.cover}" alt="${r.title}" loading="lazy">
                 <div class="list-item-meta">
-                    <div class="title">${escapeHtml(r.title)}</div>
+                    <div class="list-title-row">
+                        <span class="title">${escapeHtml(r.title)}</span>
+                        ${createBadgeHtml(r)}
+                    </div>
                     <div class="meta">${escapeHtml(r.credits)}</div>
                 </div>
                 <div class="list-item-date">${formatDate(r.date)}</div>
@@ -275,7 +299,6 @@ function renderRelease(slug) {
   if (!r) { app.innerHTML = `<p>Release not found. <a href="#">Go home</a></p>`; return; }
   const desc = escapeHtml(r.description).replace(/\n/g, '<br>');
   
-  // NOUVEAU : Logique Exclusif/Stream
   const isExclusive = r.exclusive !== false;
   let buttonHtml = '';
   if (isExclusive) {
@@ -285,13 +308,13 @@ function renderRelease(slug) {
       `;
   } else {
       buttonHtml = `
-        <a class="btn" href="${r.stream_url || '#'}" target="_blank"><i class="fi fi-sr-share-square"></i> Listen Now</a>
+        <a class="btn" href="${r.stream_url || '#'}" target="_blank"><i class="fi fi-sr-headphones"></i> Listen Now</a>
       `;
   }
   
   const html = `
   <div class="page-header">
-    <a href="#" class="back-link">← Back to releases</a>
+    <a href="#" class="back-link">← Back to library</a>
   </div>
 
   <section class="release-hero">
@@ -307,7 +330,8 @@ function renderRelease(slug) {
 
       <p class="release-desc">${desc || '...'}</p>
       
-      <div class="release-date-bottom">Release date: ${formatDate(r.date)}</div>
+      <div class="release-date-bottom">${formatDate(r.date)}</div>
+      <div class="release-badges">${createBadgeHtml(r)}</div>
       
       ${r.lyrics ? `<h3 style="margin-top:40px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--muted);">Lyrics</h3><p class="release-desc">${r.lyrics.replace(/\n/g, '<br>')}</p>` : ''}
       
@@ -316,7 +340,6 @@ function renderRelease(slug) {
   
   app.innerHTML = html;
   
-  // Ajoute l'écouteur SEULEMENT si le bouton play existe
   if (isExclusive) {
     document.getElementById('play-release-btn').addEventListener('click', () => playRelease(r));
   }
@@ -421,7 +444,7 @@ adminIcon.addEventListener('click', async () => {
 function renderAdmin() {
   app.innerHTML = `<section>
   <div class="page-header">
-    <a href="#" class="back-link">← Back to releases</a>
+    <a href="#" class="back-link">← Back to library</a>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
     <h2>Database Manager</h2>
@@ -461,7 +484,6 @@ function updateMediaSession(r) {
 }
 
 function playRelease(r) {
-  // Sécurité : Ne joue pas si ce n'est pas exclusif
   if (r.exclusive === false) return; 
   
   currentIndex = releases.findIndex(x => x.slug === r.slug); 
@@ -498,14 +520,13 @@ function playRelease(r) {
 
 function updatePlayBtn() {
     const icon = isPlaying ? SVG_PAUSE : SVG_PLAY;
-    btnPlay.innerHTML = icon; // Remplace le contenu (l'icône <i>)
+    btnPlay.innerHTML = icon;
     const bigBtn = document.getElementById('play-release-btn');
     if(bigBtn) bigBtn.innerHTML = `${icon} ${isPlaying ? 'Pause' : 'Play'}`;
 }
 
 function togglePlay() {
     if (!audio.src && releases.length > 0) {
-        // Trouve le premier morceau JOUABLE à jouer
         const firstExclusive = releases.find(r => r.exclusive !== false);
         if(firstExclusive) {
             playRelease(firstExclusive);
@@ -525,7 +546,6 @@ function playNext() {
     if (!releases.length) return;
     let nextIndex = (currentIndex + 1) % releases.length;
     
-    // Boucle pour trouver le prochain morceau JOUABLE
     while (releases[nextIndex].exclusive === false && nextIndex !== currentIndex) {
         nextIndex = (nextIndex + 1) % releases.length;
     }
@@ -538,7 +558,6 @@ function playPrev() {
     if (!releases.length) return;
     let prevIndex = (currentIndex - 1 + releases.length) % releases.length;
 
-    // Boucle pour trouver le morceau JOUABLE précédent
     while (releases[prevIndex].exclusive === false && prevIndex !== currentIndex) {
         prevIndex = (prevIndex - 1 + releases.length) % releases.length;
     }
