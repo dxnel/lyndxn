@@ -118,7 +118,7 @@ async function router() {
 async function renderHome() {
   app.innerHTML = `
     <div class="home-header">
-      <h2>Library</h2>
+      <h2>Releases</h2>
       <div class="library-controls" id="library-controls">
         <div class="control-group">
           <button class="view-btn" data-action="toggle-group" title="Group by Artist" id="group-toggle-btn">${SVG_GROUP}</button>
@@ -314,7 +314,7 @@ function renderRelease(slug) {
   
   const html = `
   <div class="page-header">
-    <a href="#" class="back-link">← Back to library</a>
+    <a href="#" class="back-link">← Back to releases</a>
   </div>
 
   <section class="release-hero">
@@ -444,7 +444,7 @@ adminIcon.addEventListener('click', async () => {
 function renderAdmin() {
   app.innerHTML = `<section>
   <div class="page-header">
-    <a href="#" class="back-link">← Back to library</a>
+    <a href="#" class="back-link">← Back to releases</a>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
     <h2>Database Manager</h2>
