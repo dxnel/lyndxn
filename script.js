@@ -296,7 +296,7 @@ function renderGrid() {
 //--- RELEASE ---
 function renderRelease(slug) {
   const r = releases.find(x => x.slug === slug);
-  if (!r) { app.innerHTML = `<p>Release not found. <a href="#">Go home</a></p>`; return; }
+  if (!r) { app.innerHTML = `<p>Release not found.</p>`; return; }
   const desc = escapeHtml(r.description).replace(/\n/g, '<br>');
   
   const isExclusive = r.exclusive !== false;
