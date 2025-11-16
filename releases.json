@@ -3,45 +3,113 @@
     "slug": "yzote-meraki",
     "title": "meraki",
     "type": "single",
-    "credits": "yzote",
+    "credits": ["yzote"],
+    "artist_pfp": "https://media.discordapp.net/attachments/728648273161748520/1438817193000439818/pfp_cool_variant_1.png?ex=691993ee&is=6918426e&hm=8f0c4ebbb3f001081fcf215b94a4d3c147137680f002de07acb7806b18dccefe&=&format=webp&quality=lossless&width=1844&height=1844",
     "date": "2025-11-16",
     "genre": "Alternative/Clasical",
-    "description": "Latest single from Yzote.",
-    "lyrics": "",
     "cover": "./tracks/covers/yzote_merakicover500.png",
-    "audio": "./tracks/Yzote_Meraki.wav",
-    "exclusive": false,
+    "description": "Latest single from Yzote.",
     "explicit": false,
-    "stream_url": "https://soundcloud.com/yzote/meraki"
+    "exclusive": false,
+    "tracks": [
+      {
+        "track_number": 1,
+        "title": "meraki",
+        "credits": ["yzote"],
+        "audio": "./tracks/Yzote_Meraki.wav",
+        "exclusive": false,
+        "explicit": false,
+        "stream_url": "https://soundcloud.com/yzote/meraki"
+      }
+    ]
   },
   {
     "slug": "w0ndr-leavingearth",
     "title": "Leaving Earth",
     "type": "single",
-    "credits": "w0ndr",
+    "credits": ["w0ndr"],
+    "artist_pfp": "./artists/default.png",
     "date": "2025-11-20",
     "genre": "Alternative/Indie",
-    "description": "Now available on streaming platforms.",
-    "lyrics": "",
     "cover": "./tracks/covers/placeholder-cover.png",
-    "audio": null,
-    "exclusive": false,
+    "description": "Now available on streaming platforms.",
     "explicit": true,
-    "stream_url": ""
+    "exclusive": false,
+    "tracks": [
+      {
+        "track_number": 1,
+        "title": "Leaving Earth",
+        "credits": ["w0ndr"],
+        "audio": null,
+        "exclusive": false,
+        "explicit": true,
+        "stream_url": "https://soundcloud.com/t-m-t-r/yzote-meraki"
+      }
+    ]
   },
   {
     "slug": "lyndxn-cles",
     "title": "clés (demo - 10112025)",
     "type": "single",
-    "credits": "lyndxn",
+    "credits": ["lyndxn"],
+    "artist_pfp": "./artists/default.png",
     "date": "2025-11-10",
     "genre": "Hip-Hop/Rap",
-    "description": "Latest single from lyndxn.",
-    "lyrics": "",
     "cover": "./tracks/covers/placeholder-cover.png",
-    "audio": "./tracks/lyndxn_clés.wav",
-    "exclusive": true,
+    "description": "Latest single from lyndxn.",
     "explicit": false,
-    "stream_url": null
+    "exclusive": true,
+    "tracks": [
+      {
+        "track_number": 1,
+        "title": "clés (demo - 10112025)",
+        "credits": ["lyndxn"],
+        "audio": "./tracks/lyndxn_clés.wav",
+        "exclusive": true,
+        "explicit": false,
+        "stream_url": null
+      }
+    ]
+  },
+  {
+    "slug": "lyndxn-w0ndr-collab-ep",
+    "title": "Collab EP",
+    "type": "album",
+    "credits": ["lyndxn", "w0ndr"],
+    "artist_pfp": "./artists/default.png",
+    "date": "2026-01-15",
+    "genre": "Electronic",
+    "cover": "./tracks/covers/collab-ep-cover.png",
+    "description": "Un projet collaboratif explorant les sons ambiants.",
+    "explicit": false,
+    "tracks": [
+      {
+        "track_number": 1,
+        "title": "Intro (Le Matin)",
+        "credits": ["lyndxn"],
+        "audio": "./tracks/lyndxn_cles.wav",
+        "exclusive": true,
+        "explicit": false,
+        "stream_url": null
+      },
+      {
+        "track_number": 2,
+        "title": "Rêverie",
+        "credits": ["lyndxn", "w0ndr"],
+        "audio": null,
+        "exclusive": false,
+        "explicit": false,
+        "stream_url": "https://soundcloud.com/..."
+      },
+      {
+        "track_number": 3,
+        "title": "Nouveau Monde",
+        "credits": ["lyndxn", "w0ndr", "yzote"],
+        "audio": "./tracks/Yzote_Meraki.wav",
+        "exclusive": true,
+        "explicit": true,
+        "stream_url": null
+      }
+    ]
   }
 ]
