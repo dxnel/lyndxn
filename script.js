@@ -250,8 +250,8 @@ function renderGrid() {
                     
                 </div>
                 <div class="list-date-row">
+                                    ${createBadgeHtml(r)}
                     <span>${formatDate(r.date)}</span>
-                    ${createBadgeHtml(r)}
                 </div>
             </a>`;
         }
