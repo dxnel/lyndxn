@@ -2,40 +2,46 @@
   {
     "slug": "yzote-meraki",
     "title": "meraki",
+    "type": "single",
+    "credits": "yzote",
     "date": "2025-11-16",
+    "genre": "Alternative/Clasical",
+    "description": "Latest single from Yzote.",
+    "lyrics": "",
     "cover": "./tracks/covers/yzote_merakicover500.png",
     "audio": "./tracks/Yzote_Meraki.wav",
     "exclusive": false,
     "explicit": false,
-    "stream_url": null,
-    "description": "Latest single from Yzote.",
-    "credits": "yzote",
-    "lyrics": ""
+    "stream_url": null
   },
   {
     "slug": "w0ndr-leavingearth",
     "title": "Leaving Earth",
+    "type": "single",
+    "credits": "w0ndr",
     "date": "2025-11-20",
+    "genre": "Alternative/Indie",
+    "description": "Now available on streaming platforms.",
+    "lyrics": "",
     "cover": "./tracks/covers/placeholder-cover.png",
     "audio": null,
     "exclusive": false,
     "explicit": true,
-    "stream_url": "https://soundcloud.com/t-m-t-r/yzote-meraki",
-    "description": "Now available on streaming platforms.",
-    "credits": "w0ndr",
-    "lyrics": ""
+    "stream_url": "https://soundcloud.com/t-m-t-r/yzote-meraki"
   },
   {
     "slug": "lyndxn-cles",
     "title": "clés (demo - 10112025)",
+    "type": "single",
+    "credits": "lyndxn",
     "date": "2025-11-10",
+    "genre": "Hip-Hop/Rap",
+    "description": "Latest single from lyndxn.",
+    "lyrics": "",
     "cover": "./tracks/covers/placeholder-cover.png",
     "audio": "./tracks/lyndxn_clés.wav",
     "exclusive": true,
     "explicit": false,
-    "stream_url": null,
-    "description": "Latest single from lyndxn.",
-    "credits": "lyndxn",
-    "lyrics": ""
+    "stream_url": null
   }
 ]

@@ -216,7 +216,7 @@ function renderGrid() {
         if (currentSort === 'artist') return a.credits.localeCompare(b.credits);
         return 0;
     };
-
+     
     const renderItem = (r) => {
         if (currentView === 'grid') {
             return `
@@ -230,7 +230,11 @@ function renderGrid() {
                             <div class="title">${escapeHtml(r.title)}</div>
                             ${createBadgeHtml(r)}
                         </div>
-                        <div class="meta"><span>${escapeHtml(r.credits)}</span></div>
+                        <div class="meta">
+    <span>${escapeHtml(r.credits)}</span>
+    <span class="meta-dot">●</span>
+    <span>${new Date(r.date).getFullYear()}</span>
+</div>
                     </div>
                 </a>
             </div>`;
@@ -243,6 +247,7 @@ function renderGrid() {
                         <span class="title">${escapeHtml(r.title)}</span>
                     </div>
                     <div class="meta">${escapeHtml(r.credits)}</div>
+                    
                 </div>
                 <div class="list-date-row">
                     <span>${formatDate(r.date)}</span>
@@ -323,10 +328,11 @@ function renderRelease(slug) {
       
       <h1 class="release-title">${escapeHtml(r.title)}</h1>
       <div class="release-artist">${escapeHtml(r.credits)}</div>
+      <div class="release-year"><span>${escapeHtml(r.genre + " " || 'No genre')}<span class="meta-dot">● </span><span>${new Date(r.date).getFullYear()}</span></span></div>
       
-      <div style="display:flex; gap:12px; margin-bottom:32px;">
-         ${buttonHtml}
-      </div>
+      <div class="release-actions">
+   ${buttonHtml}
+</div>
 
       <p class="release-desc">${desc || '...'}</p>
       
