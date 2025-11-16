@@ -12,7 +12,7 @@
     "audio": "./tracks/Yzote_Meraki.wav",
     "exclusive": false,
     "explicit": false,
-    "stream_url": null
+    "stream_url": "https://soundcloud.com/yzote/meraki"
   },
   {
     "slug": "w0ndr-leavingearth",
@@ -27,7 +27,7 @@
     "audio": null,
     "exclusive": false,
     "explicit": true,
-    "stream_url": "https://soundcloud.com/t-m-t-r/yzote-meraki"
+    "stream_url": ""
   },
   {
     "slug": "lyndxn-cles",
