@@ -35,7 +35,7 @@ const SVG_PAUSE = '<i class="fi fi-sr-pause"></i>';
 const SVG_GRID = '<i class="fi fi-sr-apps"></i>';
 const SVG_LIST = '<i class="fi fi-sr-list"></i>';
 const SVG_GROUP = '<i class="fi fi-sr-user"></i>';
-const SVG_LISTEN = '<i class="fi fi-sr-share-square"></i>';
+const SVG_LISTEN = '<i class="fi fi-sr-music-alt"></i>';
 // MODIFIÉ : Icônes de badge
 const ICON_EXPLICIT = '<i class="fi fi-sr-circle-e"></i>';
 const ICON_EXCLUSIVE = '<i class="fi fi-sr-play"></i>';
