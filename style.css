@@ -186,6 +186,12 @@ a { color: inherit; text-decoration: none; transition: color 0.2s; }
   color: var(--bg);
 }
 
+#exclusive-toggle-btn.active {
+    /* Couleur du badge exclusif */
+    background: #e2cc74;
+    color: var(--bg); /* Texte/icône noir sur badge clair */
+}
+
 /* Conteneur de Grille/Liste */
 .grid-container {
   opacity: 1;

@@ -26,6 +26,7 @@ let releases = [], audio = new Audio(), isPlaying = false;
 let currentSort = 'date';
 let currentView = 'grid';
 let isGrouped = false;
+let isExclusiveFilterActive = false;
 let paperColor, trackColor;
 // NOUVEAU : Suivi de l'album en cours de lecture
 let currentProject = null;
@@ -164,6 +165,7 @@ async function renderHome() {
       <div class="library-controls" id="library-controls">
         <div class="control-group">
           <button class="view-btn" data-action="toggle-group" title="Group by Artist" id="group-toggle-btn">${SVG_GROUP}</button>
+          <button class="view-btn" data-action="toggle-exclusive" title="Show Exclusive Only" id="exclusive-toggle-btn">${ICON_EXCLUSIVE}</button>
         </div>
         <div class="control-group" id="view-toggle">
           <button class="view-btn ${currentView === 'grid' ? 'active' : ''}" data-action="toggle-view" data-view="grid" title="Grid View">${SVG_GRID}</button>
@@ -229,9 +231,14 @@ async function handleControlsClick(e) {
         document.querySelector('[data-view="list"]').classList.toggle('active', currentView === 'list');
         needsReflow = true;
         
-    } else if (action === 'toggle-group') {
+    }
+    else if (action === 'toggle-group') {
         isGrouped = !isGrouped;
         btn.classList.toggle('active', isGrouped);
+        needsReflow = true;
+    } else if (action === 'toggle-exclusive') { // <-- NOUVELLE LOGIQUE
+        isExclusiveFilterActive = !isExclusiveFilterActive;
+        btn.classList.toggle('active', isExclusiveFilterActive);
         needsReflow = true;
     }
 
@@ -252,7 +259,12 @@ function renderGrid() {
         gridContainer.innerHTML = '<p>Loading...</p>'; 
         return; 
     }
-
+ // 1. Filtrer les releases
+    let releasesToRender = [...releases];
+    if (isExclusiveFilterActive) {
+        releasesToRender = releasesToRender.filter(r => r.exclusive === true);
+    }
+    
     let html = '';
     
     const sortFn = (a, b) => {
@@ -306,7 +318,7 @@ function renderGrid() {
     };
 
     if (isGrouped) {
-        const releasesByArtist = releases.reduce((acc, release) => {
+        const releasesByArtist = releasesToRender.reduce((acc, release) => {
             // Utilise le premier artiste de la liste pour le groupement
             const artist = release.credits[0] || 'Unknown Artist';
             if (!acc[artist]) acc[artist] = [];
@@ -335,7 +347,7 @@ function renderGrid() {
         html += `</div>`;
         
     } else {
-        const sortedReleases = [...releases].sort(sortFn);
+        const sortedReleases = [...releasesToRender].sort(sortFn);
         if (currentView === 'grid') {
             html = `<div class="grid">${sortedReleases.map(renderItem).join('')}</div>`;
         } else {

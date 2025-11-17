@@ -85,6 +85,7 @@
     "description": "New EP from w0ndr.",
     "copyright": "2025 Tell Me The Rain (t.m.t.r.)",
     "explicit": true,
+    "exclusive": false,
     "tracks": [
       {
         "track_number": 1,
