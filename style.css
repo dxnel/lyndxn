@@ -730,9 +730,8 @@ a.card-link {
 
 .player-inner {
   display: grid;
-  /* NOUVEAU: Colonne 1 (Gauche) | Colonne 2 (Centre) | Colonne 3 (Droite) */
-  /* Le Centre (2fr) est deux fois plus grand que chaque côté (1fr). */
-  grid-template-columns: 1fr 40% 1fr; 
+  /* CORRIGÉ: La première colonne (titre) DOIT avoir une largeur minimale de 0px pour laisser l'ellipsis fonctionner. */
+  grid-template-columns: minmax(0, 1fr) 40% 1fr; 
   align-items: center;
   padding: 16px 24px;
   column-gap: 24px;
@@ -745,8 +744,8 @@ a.card-link {
   min-width: 0;
   justify-self: start;
   
-  /* AJOUT : Autorise la colonne à réduire sa taille */
-  flex-shrink: 1; 
+  /* AJOUT CRUCIAL: Étire la colonne dans la grille tout en autorisant la réduction */
+  width: 100%; 
 }
 
 #dock-cover {
