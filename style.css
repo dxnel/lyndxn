@@ -455,6 +455,7 @@ a.card-link {
   color: var(--paper); /* Assure qu'il reprend la bonne couleur */
   opacity: 0.8;
   transition: opacity 0.2s, transform 0.2s;
+  cursor: pointer;
 }
 .track-play-button:hover {
   opacity: 1;
@@ -602,17 +603,18 @@ a.card-link {
   line-height: 0;
 }
 /* Style pour les morceaux non-exclusifs (pas de bouton play) */
-.track-item[data-exclusive="false"] {
+/* ... (Les NOUVELLES règles) ... */
+.track-item[data-playable="false"] {
   cursor: default;
 }
-.track-item[data-exclusive="false"]:hover {
+.track-item[data-playable="false"]:hover {
   background: none;
 }
-.track-item[data-exclusive="false"] .track-play-button {
+.track-item[data-playable="false"] .track-play-button {
   display: none !important;
 }
-.track-item[data-exclusive="false"] .track-title,
-.track-item[data-exclusive="false"] .track-number {
+.track-item[data-playable="false"] .track-title,
+.track-item[data-playable="false"] .track-number {
   color: var(--muted);
   font-weight: 400;
 }
@@ -726,10 +728,11 @@ a.card-link {
   overflow: hidden;
 }
 
-/* MODIFIÉ : Layout Grid pour le player */
 .player-inner {
   display: grid;
-  grid-template-columns: auto 1fr auto; 
+  /* NOUVEAU: Colonne 1 (Gauche) | Colonne 2 (Centre) | Colonne 3 (Droite) */
+  /* Le Centre (2fr) est deux fois plus grand que chaque côté (1fr). */
+  grid-template-columns: 1fr 40% 1fr; 
   align-items: center;
   padding: 16px 24px;
   column-gap: 24px;
@@ -741,6 +744,9 @@ a.card-link {
   align-items: center;
   min-width: 0;
   justify-self: start;
+  
+  /* AJOUT : Autorise la colonne à réduire sa taille */
+  flex-shrink: 1; 
 }
 
 #dock-cover {
@@ -755,6 +761,10 @@ a.card-link {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  
+  /* AJOUT : Essentiel dans Flexbox pour faire fonctionner l'ellipsis */
+  min-width: 0; 
+  flex-shrink: 1;
 }
 
 #dock-title { 
@@ -763,6 +773,7 @@ a.card-link {
   white-space: nowrap; 
   overflow: hidden; 
   text-overflow: ellipsis;
+  flex-shrink: 1;
 }
 #dock-sub { 
   font-size: 12px; 
@@ -771,6 +782,7 @@ a.card-link {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-shrink: 1;
 }
 
 .player-controls {
@@ -808,17 +820,17 @@ a.card-link {
 .player-controls button:hover { opacity: 1; transform: scale(1.1); }
 
 #btn-play {
-  font-size: 30px;
+  font-size: 25px;
   opacity: 1;
 }
 #btn-play:hover {
   transform: scale(1.1);
 }
 #btn-play i.fi-sr-play {
-  margin-left: 3px;
+  margin-left: 0px;
 }
 #btn-play i.fi-sr-pause {
-  font-size: 28px;
+  font-size: 25px;
 }
 
 
@@ -865,7 +877,7 @@ input[type=range]::-webkit-slider-runnable-track {
   justify-content: flex-end;
   align-items: center;
   gap: 12px;
-  justify-self: end;
+  justify-self: end; /* CORRIGÉ : Utilise 'end' pour la colonne de droite */
 }
 .player-year {
   font-size: 13px;

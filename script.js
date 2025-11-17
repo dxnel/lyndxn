@@ -354,7 +354,8 @@ function renderRelease(slug) {
   const mainCredits = formatCredits(project.credits);
   const desc = escapeHtml(project.description).replace(/\n/g, '<br>');
   
-  const firstPlayableTrack = project.tracks.find(t => t.exclusive !== false && t.audio);
+  const firstPlayableTrack = project.tracks.find(t => t.exclusive === true
+ && t.audio);
   let buttonHtml = '';
 
   // --- NOUVELLE LOGIQUE ---
@@ -383,18 +384,22 @@ function renderRelease(slug) {
   // Génère la liste des morceaux
   const tracksHtml = project.tracks.map((track, index) => {
     const trackCredits = formatCredits(track.credits);
-    const isPlayable = track.exclusive !== false && track.audio;
+    // FIX MAJEUR: Forcer le résultat en booléen ('true' ou 'false') avec !!
+    const isPlayable = !!(track.exclusive !== false && track.audio);
     
+    // NOUVEAU PRINT : Affiche la valeur booléenne forcée
+    console.log(`DEBUG: [Générateur] Track ${index}: isPlayable est réglé à ${isPlayable}`); 
+
     const trackButton = isPlayable
       ? `<button class="track-play-button">${SVG_PLAY}</button>`
       : `<a href="${track.stream_url || '#'}" target="_blank" class="track-play-button">${SVG_LISTEN}</a>`;
 
     return `
-    <div class="track-item" data-track-index="${index}" data-exclusive="${isPlayable}">
+    <div class="track-item" data-track-index="${index}" data-playable="${isPlayable}">
       <div class="track-number">${track.track_number}</div>
       <div class="track-meta">
         <div class="track-title">
-          <span>${escapeHtml(track.title)} Bonus track </span>
+          <span>${escapeHtml(track.title)}</span>
           ${createBadgeHtml(track, 'tracklist', project)}
         </div>
         <div class="track-credits">${escapeHtml(trackCredits)}</div>
@@ -472,7 +477,8 @@ function renderRelease(slug) {
   app.innerHTML = html;
   
   // Écouteur pour le bouton "Play" principal (joue le 1er morceau)
-  if (firstPlayableTrack) {
+  // ON VÉRIFIE LES MÊMES CONDITIONS QUI ONT CRÉÉ LE BOUTON "PLAY"
+  if (firstPlayableTrack && project.exclusive === true) {
     document.getElementById('play-release-btn').addEventListener('click', () => {
         playTrack(firstPlayableTrack, project);
     });
@@ -480,14 +486,37 @@ function renderRelease(slug) {
   
   // Écouteurs pour chaque morceau dans la liste
   document.getElementById('track-list').addEventListener('click', (e) => {
+     console.log("DEBUG: --- Clic sur liste des morceaux détecté ---");
      const trackItem = e.target.closest('.track-item');
-     if (trackItem && trackItem.dataset.exclusive === 'true') {
+     
+     if (!trackItem) {
+        console.log("DEBUG: Clic ignoré (pas sur un élément track-item).");
+        return;
+     }
+
+     const currentAttr = trackItem.dataset.playable;
+     console.log("DEBUG: Élément track-item trouvé. data-playable:", currentAttr);
+     
+     // NOUVEAU PRINT : Montre ce que JS essaie de comparer
+     console.log(`DEBUG: Vérification: "${currentAttr}" === "true" ?`); 
+     
+     if (trackItem && currentAttr === 'true') {
+         console.log("DEBUG: Condition PLAYABLE Remplie. Tentative de lecture...");
+         
          const trackIndex = parseInt(trackItem.dataset.trackIndex, 10);
          const track = project.tracks[trackIndex];
+         
          playTrack(track, project);
+         
+         console.log(`DEBUG: playTrack() appelée pour: ${track.title}`);
+     } else {
+        console.log("DEBUG: Condition PLAYABLE FAUSSE. Lancement du morceau impossible.");
      }
   });
 }
+
+//--- FONCTIONS MODAL ---
+// ... (reste du code inchangé) ...
 
 //--- FONCTIONS MODAL ---
 function closeModal() {
@@ -629,7 +658,7 @@ function updateMediaSession(track, project) {
 
 // MODIFIÉ : Prend un objet 'track' et 'project'
 function playTrack(track, project) {
-  if (track.exclusive === false) return; 
+  if (!track.audio) return; // Ne joue que s'il y a un fichier audio
   
   // Met à jour l'état global
   currentProject = project;
@@ -660,7 +689,8 @@ function playTrack(track, project) {
   
   playerDock.classList.add('active'); 
   updatePlayBtn();
-  updateTrackListUI(project.slug, currentTrackIndex);
+  updateTrackListUI(currentProject.slug, currentTrackIndex, isPlaying);
+
   
   if ('mediaSession' in navigator) {
     navigator.mediaSession.playbackState = 'playing';
@@ -676,19 +706,21 @@ function updatePlayBtn() {
     if(bigBtn) bigBtn.innerHTML = `${icon} ${isPlaying ? 'Pause' : 'Play'}`;
     
     // Met à jour le bouton play dans la liste de morceaux
-    updateTrackListUI(currentProject?.slug, currentTrackIndex);
+    updateTrackListUI(currentProject?.slug, currentTrackIndex, isPlaying);
+
 }
 
 // NOUVEAU : Surligne le morceau en cours
-function updateTrackListUI(projectSlug, trackIndex) {
+function updateTrackListUI(projectSlug, trackIndex, playing) {
+
     // S'assure qu'on est sur la bonne page
     if (!window.location.hash.includes(projectSlug)) return;
     
     document.querySelectorAll('.track-item').forEach((item, index) => {
         const playBtn = item.querySelector('.track-play-button');
         if (index === trackIndex) {
-            item.classList.toggle('playing', isPlaying);
-            if (playBtn) playBtn.innerHTML = isPlaying ? SVG_PAUSE : SVG_PLAY;
+            item.classList.toggle('playing', playing);
+            if (playBtn) playBtn.innerHTML = playing ? SVG_PAUSE : SVG_PLAY;
         } else {
             item.classList.remove('playing');
             if (playBtn) playBtn.innerHTML = SVG_PLAY;
@@ -699,9 +731,11 @@ function updateTrackListUI(projectSlug, trackIndex) {
 function togglePlay() {
     if (!audio.src && releases.length > 0) {
         // Trouve le premier morceau jouable du premier album
-        const firstProject = releases.find(p => p.tracks.some(t => t.exclusive !== false));
+        const firstProject = releases.find(p => p.tracks.some(t => t.exclusive !== false
+));
         if (firstProject) {
-            const firstTrack = firstProject.tracks.find(t => t.exclusive !== false);
+            const firstTrack = firstProject.tracks.find(t => t.exclusive !== false
+ && t.audio);
             if (firstTrack) {
                 playTrack(firstTrack, firstProject);
             }
@@ -724,7 +758,7 @@ function playNext() {
     let nextIndex = (currentTrackIndex + 1);
     
     // Boucle pour trouver le prochain morceau JOUABLE dans l'album
-    while (nextIndex < currentProject.tracks.length && currentProject.tracks[nextIndex].exclusive === false) {
+    while (nextIndex < currentProject.tracks.length && (currentProject.tracks[nextIndex].exclusive === false || !currentProject.tracks[nextIndex].audio)) {
         nextIndex++;
     }
     
@@ -738,7 +772,7 @@ function playPrev() {
     let prevIndex = (currentTrackIndex - 1);
 
     // Boucle pour trouver le morceau JOUABLE précédent
-    while (prevIndex >= 0 && currentProject.tracks[prevIndex].exclusive === false) {
+    while (prevIndex >= 0 && (currentProject.tracks[prevIndex].exclusive === false || !currentProject.tracks[prevIndex].audio)) {
         prevIndex--;
     }
     
