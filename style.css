@@ -1013,7 +1013,7 @@ textarea.jsonedit:focus {
 /* ======================= */
 /* =   MEDIA QUERY MOBILE  = */
 /* ======================= */
-@media(max-width: 768px) {
+@media(max-width: 893px) {
   .container {
     padding: 0 18px;
   }
