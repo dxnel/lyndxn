@@ -38,7 +38,7 @@ const SVG_PAUSE = '<i class="fi fi-sr-pause"></i>';
 const SVG_GRID = '<i class="fi fi-sr-apps"></i>';
 const SVG_LIST = '<i class="fi fi-sr-list"></i>';
 const SVG_GROUP = '<i class="fi fi-sr-user"></i>';
-const SVG_LISTEN = '<i class="fi fi-sr-headphones"></i>';
+const SVG_LISTEN = '<i class="fi fi-sr-square-up-right"></i>';
 const ICON_EXPLICIT = '<i class="fi fi-sr-square-e"></i>';
 const ICON_EXCLUSIVE = '<i class="fi fi-sr-star"></i>';
 
@@ -341,7 +341,7 @@ function renderRelease(slug) {
   } else {
       const streamUrl = project.tracks[0]?.stream_url || '#';
       buttonHtml = `
-        <a class="btn" href="${streamUrl}" target="_blank"><i class="fi fi-sr-headphones"></i> Listen Now</a>
+        <a class="btn" href="${streamUrl}" target="_blank"><i class="fi fi-sr-square-up-right"></i> Listen Now</a>
       `;
   }
   
