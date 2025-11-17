@@ -110,7 +110,7 @@
         "track_number": 3,
         "title": "Losing My Mind (Bonus Track)",
         "credits": ["lyndxn", "w0ndr"],
-        "audio": null,
+        "audio": "./tracks/lyndxn_clés.wav",
         "duration_seconds": 215,
         "exclusive": true,
         "explicit": true,

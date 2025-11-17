@@ -75,17 +75,41 @@ const capitalize = (s) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-// MODIFIÉ : Ajout d'un paramètre 'context'
-function createBadgeHtml(item, context = 'default') {
+/// MODIFIÉ : Ajout d'un paramètre 'project' pour gérer le cas "Bonus Track"
+function createBadgeHtml(item, context = 'default', project = null) {
   let html = '';
-  // Hiérarchie : Explicite d'abord
+  
+  // 1. Badge Explicite (inchangé)
   if (item.explicit) {
     html += ` <div class="badge explicit" title="Explicit">${ICON_EXPLICIT}</div>`;
   }
-  // NOUVELLE CONDITION : Affiche 'exclusive' seulement si le context n'est PAS 'tracklist'
-  if (item.exclusive !== false && context !== 'tracklist') {
+
+  // 2. NOUVELLE LOGIQUE pour le badge Exclusif
+  let showExclusive = false;
+  
+  if (item.exclusive !== false) { // Si l'item (projet OU track) est exclusif...
+    
+    if (context !== 'tracklist') {
+      // Cas de la GRID VIEW (context='default')
+      // On affiche toujours le badge si le projet est exclusif
+      showExclusive = true;
+      
+    } else {
+      // Cas de la TRACK LIST (context='tracklist')
+      // On l'affiche SEULEMENT SI le projet parent N'EST PAS exclusif
+      // C'est la condition "Bonus Track" !
+      if (project && project.exclusive !== true) {
+        showExclusive = true;
+      }
+      // Si le projet parent EST exclusif (ex: "clés"), on ne met pas
+      // le badge sur la track, car c'est redondant.
+    }
+  }
+  
+  if (showExclusive) {
     html += ` <div class="badge exclusive" title="Exclusive">${ICON_EXCLUSIVE}</div>`;
   }
+
   return html.length > 0 ? `<div class="badge-container">${html}</div>` : '';
 }
 
@@ -331,14 +355,25 @@ function renderRelease(slug) {
   const desc = escapeHtml(project.description).replace(/\n/g, '<br>');
   
   const firstPlayableTrack = project.tracks.find(t => t.exclusive !== false && t.audio);
-  
   let buttonHtml = '';
-  if (firstPlayableTrack) {
-      buttonHtml = `
-        <button class="btn" id="play-release-btn"><i class="fi fi-sr-play"></i> Play</button>
-        ${project.type === 'single' ? `<a class="btn secondary" href="${firstPlayableTrack.audio}" download="${project.slug}.mp3">Download</a>` : ''}
-      `;
-  } else {
+
+  // --- NOUVELLE LOGIQUE ---
+  // Si le PROJET lui-même est marqué 'exclusive: true' (ex: "clés demo")
+  if (project.exclusive === true) {
+      if (firstPlayableTrack) {
+          buttonHtml = `
+            <button class="btn" id="play-release-btn"><i class="fi fi-sr-play"></i> Play</button>
+            ${project.type === 'single' ? `<a class="btn secondary" href="${firstPlayableTrack.audio}" download="${project.slug}.mp3">Download</a>` : ''}
+          `;
+      } else {
+          // Fallback au cas où un projet exclusif n'a pas d'audio
+          buttonHtml = `<button class="btn" disabled>Not Available</button>`;
+      }
+  } 
+  // Si le PROJET N'EST PAS exclusif (il est sur les plateformes, comme "RainbOw" ou "meraki")
+  // On affiche "Listen Now", MÊME SI un bonus track est jouable.
+  else {
+      // On cherche un lien de streaming sur la première track (ou l'URL que tu veux)
       const streamUrl = project.tracks[0]?.stream_url || '#';
       buttonHtml = `
         <a class="btn" href="${streamUrl}" target="_blank"><i class="fi fi-sr-square-up-right"></i> Listen Now</a>
@@ -359,8 +394,8 @@ function renderRelease(slug) {
       <div class="track-number">${track.track_number}</div>
       <div class="track-meta">
         <div class="track-title">
-          <span>${escapeHtml(track.title)}</span>
-          ${createBadgeHtml(track, 'tracklist')}
+          <span>${escapeHtml(track.title)} Bonus track </span>
+          ${createBadgeHtml(track, 'tracklist', project)}
         </div>
         <div class="track-credits">${escapeHtml(trackCredits)}</div>
       </div>
