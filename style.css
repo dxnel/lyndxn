@@ -1095,7 +1095,7 @@ textarea.jsonedit:focus {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 4px;
   }
   
   .release-desc { 
@@ -1205,7 +1205,7 @@ textarea.jsonedit:focus {
   .track-list-creds {
     display: flex; /* S'assurer qu'il est visible et en ligne */
     align-items: center;
-    gap: 8px; /* Espace entre la date, le dot, et le copyright */
+    gap: 4px; /* Espace entre la date, le dot, et le copyright */
      /* (viendra en haut grâce à column-reverse) */
   }
 
