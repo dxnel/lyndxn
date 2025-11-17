@@ -22,12 +22,15 @@ const modalOverlay = document.getElementById('modal-overlay'),
       modalSubmit = document.getElementById('modal-submit'),
       modalCancel = document.getElementById('modal-cancel');
 
-let releases = [], currentIndex = 0, audio = new Audio(), isPlaying = false;
+let releases = [], audio = new Audio(), isPlaying = false;
 let currentSort = 'date';
 let currentView = 'grid';
 let isGrouped = false;
 let paperColor, trackColor;
-// modalResolve est maintenant géré localement
+// NOUVEAU : Suivi de l'album en cours de lecture
+let currentProject = null;
+let currentTrackIndex = 0;
+
 
 // --- ICONS ---
 const SVG_PLAY = '<i class="fi fi-sr-play"></i>';
@@ -35,10 +38,9 @@ const SVG_PAUSE = '<i class="fi fi-sr-pause"></i>';
 const SVG_GRID = '<i class="fi fi-sr-apps"></i>';
 const SVG_LIST = '<i class="fi fi-sr-list"></i>';
 const SVG_GROUP = '<i class="fi fi-sr-user"></i>';
-const SVG_LISTEN = '<i class="fi fi-sr-music-alt"></i>';
-// MODIFIÉ : Icônes de badge
-const ICON_EXPLICIT = '<i class="fi fi-sr-circle-e"></i>';
-const ICON_EXCLUSIVE = '<i class="fi fi-sr-play"></i>';
+const SVG_LISTEN = '<i class="fi fi-sr-headphones"></i>';
+const ICON_EXPLICIT = '<i class="fi fi-sr-square-e"></i>';
+const ICON_EXCLUSIVE = '<i class="fi fi-sr-star"></i>';
 
 
 //--- UTIL ---
@@ -46,6 +48,14 @@ const ICON_EXCLUSIVE = '<i class="fi fi-sr-play"></i>';
 const escapeHtml = s => s || s === 0 ? s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) : '';
 const formatTime = s => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 const downloadFile = (name, text) => { const blob = new Blob([text], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
+
+// NOUVEAU : Formatte les crédits (Array -> String)
+const formatCredits = (credits) => {
+  if (Array.isArray(credits)) {
+    return credits.join(' & ');
+  }
+  return credits || '';
+};
 
 const formatDate = (dateString) => {
     try {
@@ -60,14 +70,20 @@ const formatDate = (dateString) => {
     }
 };
 
-// MODIFIÉ : Fonction pour générer les badges
-function createBadgeHtml(r) {
+const capitalize = (s) => {
+  if (typeof s !== 'string' || !s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
+// MODIFIÉ : Ajout d'un paramètre 'context'
+function createBadgeHtml(item, context = 'default') {
   let html = '';
   // Hiérarchie : Explicite d'abord
-  if (r.explicit) {
+  if (item.explicit) {
     html += ` <div class="badge explicit" title="Explicit">${ICON_EXPLICIT}</div>`;
   }
-  if (r.exclusive !== false) { // Affiche si 'exclusive' est true ou non défini
+  // NOUVELLE CONDITION : Affiche 'exclusive' seulement si le context n'est PAS 'tracklist'
+  if (item.exclusive !== false && context !== 'tracklist') {
     html += ` <div class="badge exclusive" title="Exclusive">${ICON_EXCLUSIVE}</div>`;
   }
   return html.length > 0 ? `<div class="badge-container">${html}</div>` : '';
@@ -106,7 +122,11 @@ async function router() {
   const hash = window.location.hash;
   
   transitionTo(() => {
-      if (hash.startsWith('#/release/')) renderRelease(hash.split('/')[2]);
+      // MODIFIÉ : Ajout de decodeURIComponent
+      if (hash.startsWith('#/release/')) {
+          const slug = decodeURIComponent(hash.split('/')[2]);
+          renderRelease(slug);
+      }
       else if (hash === '#/admin') renderAdmin();
       else renderHome();
   });
@@ -199,6 +219,7 @@ async function handleControlsClick(e) {
     }
 }
 
+// MODIFIÉ : Affiche des PROJETS, pas des morceaux
 function renderGrid() {
     const gridContainer = document.getElementById('grid-container');
     if (!gridContainer) return;
@@ -213,10 +234,11 @@ function renderGrid() {
     const sortFn = (a, b) => {
         if (currentSort === 'date') return new Date(b.date) - new Date(a.date);
         if (currentSort === 'title') return a.title.localeCompare(b.title);
-        if (currentSort === 'artist') return a.credits.localeCompare(b.credits);
+        if (currentSort === 'artist') return formatCredits(a.credits).localeCompare(formatCredits(b.credits));
         return 0;
     };
      
+    // r est un PROJET (album/single)
     const renderItem = (r) => {
         if (currentView === 'grid') {
             return `
@@ -231,10 +253,13 @@ function renderGrid() {
                             ${createBadgeHtml(r)}
                         </div>
                         <div class="meta">
-    <span>${escapeHtml(r.credits)}</span>
-    <span class="meta-dot">●</span>
-    <span>${new Date(r.date).getFullYear()}</span>
-</div>
+                            <span>${escapeHtml(formatCredits(r.credits))}</span>
+                            <span class="meta-dot">●</span>
+                            <span>${new Date(r.date).getFullYear()}</span>
+                        </div>
+                        <div class="meta">
+                            <span>${capitalize(r.type)}</span>
+                        </div>
                     </div>
                 </a>
             </div>`;
@@ -245,12 +270,11 @@ function renderGrid() {
                 <div class="list-item-meta">
                     <div class="list-title-row">
                         <span class="title">${escapeHtml(r.title)}</span>
+                        ${createBadgeHtml(r)}
                     </div>
-                    <div class="meta">${escapeHtml(r.credits)}</div>
-                    
+                    <div class="meta">${escapeHtml(formatCredits(r.credits))}</div>
                 </div>
                 <div class="list-date-row">
-                                    ${createBadgeHtml(r)}
                     <span>${formatDate(r.date)}</span>
                 </div>
             </a>`;
@@ -259,7 +283,8 @@ function renderGrid() {
 
     if (isGrouped) {
         const releasesByArtist = releases.reduce((acc, release) => {
-            const artist = release.credits || 'Unknown Artist';
+            // Utilise le premier artiste de la liste pour le groupement
+            const artist = release.credits[0] || 'Unknown Artist';
             if (!acc[artist]) acc[artist] = [];
             acc[artist].push(release);
             return acc;
@@ -298,57 +323,135 @@ function renderGrid() {
 }
 
 
-//--- RELEASE ---
 function renderRelease(slug) {
-  const r = releases.find(x => x.slug === slug);
-  if (!r) { app.innerHTML = `<p>Release not found.</p>`; return; }
-  const desc = escapeHtml(r.description).replace(/\n/g, '<br>');
+  const project = releases.find(x => x.slug === slug); // C'est un "projet" (album/single)
+  if (!project) { app.innerHTML = `<p>Release not found.</p>`; return; }
   
-  const isExclusive = r.exclusive !== false;
+  const mainCredits = formatCredits(project.credits);
+  const desc = escapeHtml(project.description).replace(/\n/g, '<br>');
+  
+  const firstPlayableTrack = project.tracks.find(t => t.exclusive !== false && t.audio);
+  
   let buttonHtml = '';
-  if (isExclusive) {
+  if (firstPlayableTrack) {
       buttonHtml = `
         <button class="btn" id="play-release-btn"><i class="fi fi-sr-play"></i> Play</button>
-        <a class="btn secondary" href="${r.audio}" download="${r.slug}.mp3">Download</a>
+        ${project.type === 'single' ? `<a class="btn secondary" href="${firstPlayableTrack.audio}" download="${project.slug}.mp3">Download</a>` : ''}
       `;
   } else {
+      const streamUrl = project.tracks[0]?.stream_url || '#';
       buttonHtml = `
-        <a class="btn" href="${r.stream_url || '#'}" target="_blank"><i class="fi fi-sr-headphones"></i> Listen Now</a>
+        <a class="btn" href="${streamUrl}" target="_blank"><i class="fi fi-sr-headphones"></i> Listen Now</a>
       `;
   }
   
+  // Génère la liste des morceaux
+  const tracksHtml = project.tracks.map((track, index) => {
+    const trackCredits = formatCredits(track.credits);
+    const isPlayable = track.exclusive !== false && track.audio;
+    
+    const trackButton = isPlayable
+      ? `<button class="track-play-button">${SVG_PLAY}</button>`
+      : `<a href="${track.stream_url || '#'}" target="_blank" class="track-play-button">${SVG_LISTEN}</a>`;
+
+    return `
+    <div class="track-item" data-track-index="${index}" data-exclusive="${isPlayable}">
+      <div class="track-number">${track.track_number}</div>
+      <div class="track-meta">
+        <div class="track-title">
+          <span>${escapeHtml(track.title)}</span>
+          ${createBadgeHtml(track, 'tracklist')}
+        </div>
+        <div class="track-credits">${escapeHtml(trackCredits)}</div>
+      </div>
+      <div class="track-controls">
+        ${trackButton}
+      </div>
+    </div>
+    `;
+  }).join('');
+  
+ // --- NOUVELLE LOGIQUE POUR LE PIED DE PAGE DE LA LISTE ---
+  let totalSeconds = 0;
+  project.tracks.forEach(t => {
+    if (t.duration_seconds) {
+      totalSeconds += t.duration_seconds;
+    }
+  });
+  
+  // Utilise Math.round pour obtenir le nombre de minutes (ex: 3.5 -> 4)
+  const totalMinutes = Math.round(totalSeconds / 60);
+  
+  // Texte pour le nombre de morceaux
+  const songCountText = project.tracks.length > 1 ? `${project.tracks.length} songs` : `1 song`;
+  
+  // Combiner le nombre de morceaux et la durée
+  let trackListInfo = songCountText;
+  if (totalMinutes > 0) {
+      trackListInfo += `, ${totalMinutes} ${totalMinutes > 1 ? 'minutes' : 'minute'}`;
+  }
+
+  // Préparer les textes pour la date et le copyright
+  const copyrightText = project.copyright ? `© ${project.copyright}` : '';
+  const dateText = formatDate(project.date);
+  // --- FIN DE LA NOUVELLE LOGIQUE ---
+
   const html = `
   <div class="page-header">
     <a href="#" class="back-link">← Back to releases</a>
   </div>
 
   <section class="release-hero">
-    <img src="${r.cover}" alt="${r.title}">
+    <img src="${project.cover}" alt="${project.title}">
     <div class="release-details">
-      
-      <h1 class="release-title">${escapeHtml(r.title)}</h1>
-      <div class="release-artist">${escapeHtml(r.credits)}</div>
-      <div class="release-year"><span>${escapeHtml(r.genre + " " || 'No genre')}<span class="meta-dot">● </span><span>${new Date(r.date).getFullYear()}</span></span></div>
+      <div class="release-type">${capitalize(project.type)}</div>
+      <h1 class="release-title">${escapeHtml(project.title)}</h1>
+      <div class="release-artist">${escapeHtml(mainCredits)}</div>
+      <div class="release-year"><span>${escapeHtml(project.genre || 'Single')}</span><span class="meta-dot">●</span><span>${new Date(project.date).getFullYear()}</span></div>
       
       <div class="release-actions">
-   ${buttonHtml}
-</div>
+         ${buttonHtml}
+      </div>
 
       <p class="release-desc">${desc || '...'}</p>
       
-      <div class="release-date-bottom">${formatDate(r.date)}</div>
-      <div class="release-badges">${createBadgeHtml(r)}</div>
-      
-      ${r.lyrics ? `<h3 style="margin-top:40px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--muted);">Lyrics</h3><p class="release-desc">${r.lyrics.replace(/\n/g, '<br>')}</p>` : ''}
+      <div class="track-list-container">
+        <div class="track-list" id="track-list">
+          ${tracksHtml}
+        </div>
+        <div class="track-list-meta">
+          <div class="track-list-info">
+            ${trackListInfo}
+          </div>
+          
+          <div class="track-list-creds">
+            <span class="track-list-date">${dateText}</span>
+            ${copyrightText ? `<span class="meta-dot">●</span><span class="track-list-copyright">${copyrightText}</span>` : ''}
+          </div>
+        </div>
+      </div>
       
     </div>
   </section>`;
   
   app.innerHTML = html;
   
-  if (isExclusive) {
-    document.getElementById('play-release-btn').addEventListener('click', () => playRelease(r));
+  // Écouteur pour le bouton "Play" principal (joue le 1er morceau)
+  if (firstPlayableTrack) {
+    document.getElementById('play-release-btn').addEventListener('click', () => {
+        playTrack(firstPlayableTrack, project);
+    });
   }
+  
+  // Écouteurs pour chaque morceau dans la liste
+  document.getElementById('track-list').addEventListener('click', (e) => {
+     const trackItem = e.target.closest('.track-item');
+     if (trackItem && trackItem.dataset.exclusive === 'true') {
+         const trackIndex = parseInt(trackItem.dataset.trackIndex, 10);
+         const track = project.tracks[trackIndex];
+         playTrack(track, project);
+     }
+  });
 }
 
 //--- FONCTIONS MODAL ---
@@ -476,36 +579,40 @@ function renderAdmin() {
 }
 
 //--- PLAYBACK ---
-function updateMediaSession(r) {
+function updateMediaSession(track, project) {
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: r.title,
-      artist: r.credits,
-      album: 't.m.t.r.',
+      title: track.title,
+      artist: formatCredits(track.credits),
+      album: project.title,
       artwork: [
-        { src: r.cover, sizes: '512x512', type: 'image/png' },
+        { src: project.cover, sizes: '512x512', type: 'image/png' },
       ]
     });
   }
 }
 
-function playRelease(r) {
-  if (r.exclusive === false) return; 
+// MODIFIÉ : Prend un objet 'track' et 'project'
+function playTrack(track, project) {
+  if (track.exclusive === false) return; 
   
-  currentIndex = releases.findIndex(x => x.slug === r.slug); 
-  if (currentIndex === -1) return;
+  // Met à jour l'état global
+  currentProject = project;
+  currentTrackIndex = track.track_number - 1;
   
-  const isSameTrack = audio.src.includes(r.audio.split('/').pop());
+  const currentSrc = decodeURIComponent(audio.src);
+  const isSameTrack = currentSrc.includes(track.audio.split('/').pop());
   
-  dockCover.src = r.cover; 
-  dockTitle.textContent = r.title; 
-  dockSub.textContent = r.credits;
-  downloadLink.href = r.audio; 
-  downloadLink.download = `${r.slug}.mp3`;
-  updateMediaSession(r);
+  // Met à jour le player
+  dockCover.src = project.cover; 
+  dockTitle.textContent = track.title; 
+  dockSub.textContent = formatCredits(track.credits);
+  downloadLink.href = track.audio; 
+  downloadLink.download = `${project.slug}-${track.title}.mp3`;
+  updateMediaSession(track, project);
   
   if(!isSameTrack) {
-      audio.src = r.audio;
+      audio.src = track.audio;
       seek.value = 0;
       curTime.textContent = '0:00';
       updateSliderBackground(0);
@@ -518,24 +625,51 @@ function playRelease(r) {
   
   playerDock.classList.add('active'); 
   updatePlayBtn();
+  updateTrackListUI(project.slug, currentTrackIndex);
   
   if ('mediaSession' in navigator) {
-    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    navigator.mediaSession.playbackState = 'playing';
   }
 }
 
+// Met à jour l'UI (player et liste de morceaux)
 function updatePlayBtn() {
     const icon = isPlaying ? SVG_PAUSE : SVG_PLAY;
     btnPlay.innerHTML = icon;
+    
     const bigBtn = document.getElementById('play-release-btn');
     if(bigBtn) bigBtn.innerHTML = `${icon} ${isPlaying ? 'Pause' : 'Play'}`;
+    
+    // Met à jour le bouton play dans la liste de morceaux
+    updateTrackListUI(currentProject?.slug, currentTrackIndex);
+}
+
+// NOUVEAU : Surligne le morceau en cours
+function updateTrackListUI(projectSlug, trackIndex) {
+    // S'assure qu'on est sur la bonne page
+    if (!window.location.hash.includes(projectSlug)) return;
+    
+    document.querySelectorAll('.track-item').forEach((item, index) => {
+        const playBtn = item.querySelector('.track-play-button');
+        if (index === trackIndex) {
+            item.classList.toggle('playing', isPlaying);
+            if (playBtn) playBtn.innerHTML = isPlaying ? SVG_PAUSE : SVG_PLAY;
+        } else {
+            item.classList.remove('playing');
+            if (playBtn) playBtn.innerHTML = SVG_PLAY;
+        }
+    });
 }
 
 function togglePlay() {
     if (!audio.src && releases.length > 0) {
-        const firstExclusive = releases.find(r => r.exclusive !== false);
-        if(firstExclusive) {
-            playRelease(firstExclusive);
+        // Trouve le premier morceau jouable du premier album
+        const firstProject = releases.find(p => p.tracks.some(t => t.exclusive !== false));
+        if (firstProject) {
+            const firstTrack = firstProject.tracks.find(t => t.exclusive !== false);
+            if (firstTrack) {
+                playTrack(firstTrack, firstProject);
+            }
         }
         return;
     }
@@ -548,28 +682,33 @@ function togglePlay() {
     }
 }
 
+// MODIFIÉ : Navigue dans l'album actuel
 function playNext() {
-    if (!releases.length) return;
-    let nextIndex = (currentIndex + 1) % releases.length;
+    if (!currentProject) return; // Ne fait rien si aucun album n'est chargé
     
-    while (releases[nextIndex].exclusive === false && nextIndex !== currentIndex) {
-        nextIndex = (nextIndex + 1) % releases.length;
+    let nextIndex = (currentTrackIndex + 1);
+    
+    // Boucle pour trouver le prochain morceau JOUABLE dans l'album
+    while (nextIndex < currentProject.tracks.length && currentProject.tracks[nextIndex].exclusive === false) {
+        nextIndex++;
     }
     
-    if (releases[nextIndex].exclusive !== false) {
-        playRelease(releases[nextIndex]);
+    if (nextIndex < currentProject.tracks.length) {
+        playTrack(currentProject.tracks[nextIndex], currentProject);
     }
 }
 function playPrev() {
-    if (!releases.length) return;
-    let prevIndex = (currentIndex - 1 + releases.length) % releases.length;
+    if (!currentProject) return;
+    
+    let prevIndex = (currentTrackIndex - 1);
 
-    while (releases[prevIndex].exclusive === false && prevIndex !== currentIndex) {
-        prevIndex = (prevIndex - 1 + releases.length) % releases.length;
+    // Boucle pour trouver le morceau JOUABLE précédent
+    while (prevIndex >= 0 && currentProject.tracks[prevIndex].exclusive === false) {
+        prevIndex--;
     }
     
-    if (releases[prevIndex].exclusive !== false) {
-        playRelease(releases[prevIndex]);
+    if (prevIndex >= 0) {
+        playTrack(currentProject.tracks[prevIndex], currentProject);
     }
 }
 
@@ -581,6 +720,8 @@ function updateSliderBackground(pct) {
 
 //--- INIT ---
 function init() {
+  btnPlay.innerHTML = SVG_PLAY; // Initialise le bouton play
+  
   try {
       paperColor = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
       trackColor = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
