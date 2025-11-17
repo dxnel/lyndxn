@@ -1190,7 +1190,6 @@ textarea.jsonedit:focus {
     font-style: normal;
     
     /* On ajoute le padding qui était sur .track-list-copyright */
-    margin-top: 16px;
     padding-top: 16px;
   }
   .track-list-info {
