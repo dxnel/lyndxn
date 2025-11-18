@@ -402,7 +402,8 @@ function renderRelease(slug) {
             buttonHtml = `<button class="btn" disabled>Not Available</button>`;
         }
     } else {
-        const streamUrl = p.tracks[0]?.stream_url || '#';
+        // Priorité : 1. Lien de l'album -> 2. Lien du premier son -> 3. Rien (#)
+        const streamUrl = p.link || p.tracks[0]?.stream_url || '#';
         buttonHtml = `<a class="btn" href="${streamUrl}" target="_blank">${ICONS.link} Listen Now</a>`;
     }
 
