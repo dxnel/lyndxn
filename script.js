@@ -1,962 +1,637 @@
-const app = document.getElementById('app'),
-      playerDock = document.getElementById('player-dock'),
-      dockCover = document.getElementById('dock-cover'),
-      dockTitle = document.getElementById('dock-title'),
-      dockSub = document.getElementById('dock-sub'),
-      btnPlay = document.getElementById('btn-play'),
-      btnPrev = document.getElementById('btn-prev'),
-      btnNext = document.getElementById('btn-next'),
-      curTime = document.getElementById('cur-time'),
-      durTime = document.getElementById('dur-time'),
-      seek = document.getElementById('seek'),
-      downloadLink = document.getElementById('download-link'),
-      adminIcon = document.getElementById('admin-icon');
-      
-// --- ÉLÉMENTS MODAL ---
-const modalOverlay = document.getElementById('modal-overlay'),
-      customModal = document.getElementById('custom-modal'),
-      modalTitle = document.getElementById('modal-title'),
-      modalText = document.getElementById('modal-text'),
-      modalInputArea = document.getElementById('modal-input-area'),
-      modalPassword = document.getElementById('modal-password'),
-      modalSubmit = document.getElementById('modal-submit'),
-      modalCancel = document.getElementById('modal-cancel');
-
-let releases = [], audio = new Audio(), isPlaying = false;
-let artists = []; 
-let currentSort = 'date';
-let currentView = 'grid';
-let isGrouped = false;
-let isExclusiveFilterActive = false;
-let paperColor, trackColor;
-// NOUVEAU : Suivi de l'album en cours de lecture
-let currentProject = null;
-let currentTrackIndex = 0;
-
-
-// --- ICONS ---
-const SVG_PLAY = '<i class="fi fi-sr-play"></i>';
-const SVG_PAUSE = '<i class="fi fi-sr-pause"></i>';
-const SVG_GRID = '<i class="fi fi-sr-apps"></i>';
-const SVG_LIST = '<i class="fi fi-sr-list"></i>';
-const SVG_GROUP = '<i class="fi fi-sr-user"></i>';
-const SVG_LISTEN = '<i class="fi fi-sr-square-up-right"></i>';
-const ICON_EXPLICIT = '<i class="fi fi-sr-square-e"></i>';
-const ICON_EXCLUSIVE = '<i class="fi fi-sr-star"></i>';
-
-
-//--- UTIL ---
-// CORRIGÉ : Bug de syntaxe
-const escapeHtml = s => s || s === 0 ? s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) : '';
-const formatTime = s => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
-const downloadFile = (name, text) => { const blob = new Blob([text], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
-
-// NOUVEAU : Formatte les crédits (Array -> String)
-const formatCredits = (credits) => {
-  if (Array.isArray(credits)) {
-    return credits.join(' & ');
-  }
-  return credits || '';
+const app = document.getElementById('app');
+const playerElements = {
+    dock: document.getElementById('player-dock'),
+    cover: document.getElementById('dock-cover'),
+    title: document.getElementById('dock-title'),
+    sub: document.getElementById('dock-sub'),
+    playBtn: document.getElementById('btn-play'),
+    prevBtn: document.getElementById('btn-prev'),
+    nextBtn: document.getElementById('btn-next'),
+    curTime: document.getElementById('cur-time'),
+    durTime: document.getElementById('dur-time'),
+    seek: document.getElementById('seek'),
+    dlLink: document.getElementById('download-link'),
+};
+const modalElements = {
+    overlay: document.getElementById('modal-overlay'),
+    box: document.getElementById('custom-modal'),
+    title: document.getElementById('modal-title'),
+    text: document.getElementById('modal-text'),
+    input: document.getElementById('modal-input-area'),
+    pass: document.getElementById('modal-password'),
+    submit: document.getElementById('modal-submit'),
+    cancel: document.getElementById('modal-cancel'),
 };
 
-const formatDate = (dateString) => {
+let state = { releases: [], artists: [], currentProject: null, trackIndex: 0, isPlaying: false, sort: 'date', view: 'grid', grouped: false, exclusiveOnly: false };
+const audio = new Audio();
+let cssVars = { paper: '#ededed', track: '#444' };
+
+// --- ICONS & HELPERS ---
+const ICONS = {
+    play: '<i class="fi fi-sr-play"></i>',
+    pause: '<i class="fi fi-sr-pause"></i>',
+    grid: '<i class="fi fi-sr-apps"></i>',
+    list: '<i class="fi fi-sr-list"></i>',
+    group: '<i class="fi fi-sr-user"></i>',
+    link: '<i class="fi fi-sr-square-up-right"></i>', // Used for "Listen Now"
+    explicit: '<i class="fi fi-sr-square-e"></i>',
+    exclusive: '<i class="fi fi-sr-star"></i>',
+    spotify: '<i class="fi fi-sr-play-alt"></i>', 
+    globe: '<i class="fi fi-sr-globe"></i>'
+};
+
+const esc = s => s ? s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) : '';
+const fmtTime = s => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+const fmtDate = d => { try { const x = new Date(d); return `${String(x.getDate()).padStart(2,'0')}-${String(x.getMonth()+1).padStart(2,'0')}-${x.getFullYear()}`; } catch { return d; }};
+const capitalize = s => s && typeof s === 'string' ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+const fmtCreds = c => Array.isArray(c) ? c.join(' & ') : (c || '');
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+function createBadge(item, context = 'default', parent = null) {
+    let h = '';
+    if (item.explicit) h += `<div class="badge explicit" title="Explicit">${ICONS.explicit}</div>`;
+    let showExcl = item.exclusive !== false;
+    if (context === 'tracklist' && parent && parent.exclusive === true) showExcl = false;
+    if (showExcl) h += `<div class="badge exclusive" title="Exclusive">${ICONS.exclusive}</div>`;
+    return h ? `<div class="badge-container">${h}</div>` : '';
+}
+
+// --- DATA ---
+async function loadData() {
     try {
-        const date = new Date(dateString);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-    } catch (e) {
-        console.error("Erreur formatage date:", e);
-        return dateString;
-    }
-};
-
-const capitalize = (s) => {
-  if (typeof s !== 'string' || !s) return '';
-  return s.charAt(0).toUpperCase() + s.slice(1);
-};
-
-/// MODIFIÉ : Ajout d'un paramètre 'project' pour gérer le cas "Bonus Track"
-function createBadgeHtml(item, context = 'default', project = null) {
-  let html = '';
-  
-  // 1. Badge Explicite (inchangé)
-  if (item.explicit) {
-    html += ` <div class="badge explicit" title="Explicit">${ICON_EXPLICIT}</div>`;
-  }
-
-  // 2. NOUVELLE LOGIQUE pour le badge Exclusif
-  let showExclusive = false;
-  
-  if (item.exclusive !== false) { // Si l'item (projet OU track) est exclusif...
-    
-    if (context !== 'tracklist') {
-      // Cas de la GRID VIEW (context='default')
-      // On affiche toujours le badge si le projet est exclusif
-      showExclusive = true;
-      
-    } else {
-      // Cas de la TRACK LIST (context='tracklist')
-      // On l'affiche SEULEMENT SI le projet parent N'EST PAS exclusif
-      // C'est la condition "Bonus Track" !
-      if (project && project.exclusive !== true) {
-        showExclusive = true;
-      }
-      // Si le projet parent EST exclusif (ex: "clés"), on ne met pas
-      // le badge sur la track, car c'est redondant.
-    }
-  }
-  
-  if (showExclusive) {
-    html += ` <div class="badge exclusive" title="Exclusive">${ICON_EXCLUSIVE}</div>`;
-  }
-
-  return html.length > 0 ? `<div class="badge-container">${html}</div>` : '';
+        const [rRes, aRes] = await Promise.all([
+            fetch('https://raw.githubusercontent.com/dxnel/lyndxn/refs/heads/main/releases.json?t=' + Date.now()),
+            fetch('https://raw.githubusercontent.com/dxnel/lyndxn/refs/heads/main/artists.json?t=' + Date.now())
+        ]);
+        if (rRes.ok) state.releases = await rRes.json();
+        if (aRes.ok) state.artists = await aRes.json();
+    } catch (e) { console.error(e); app.innerHTML = `<p>Error loading data.</p>`; }
 }
 
-//--- FETCH ---
-async function loadReleases() {
-  try {
-    const res = await fetch('https://raw.githubusercontent.com/dxnel/lyndxn/refs/heads/main/releases.json?t=' + Date.now());
-    if (!res.ok) throw new Error(res.status);
-    releases = await res.json();
-  } catch (e) {
-    console.error(e);
-    app.innerHTML = `<p style="color:#f55">Error: ${e.message}</p>`;
-  }
-}
-
-async function loadArtists() {
-  try {
-    // Remplace par ton URL réelle si c'est sur GitHub, sinon chemin local
-    const res = await fetch('https://raw.githubusercontent.com/dxnel/lyndxn/refs/heads/main/artists.json?t=' + Date.now());
-    if (!res.ok) throw new Error(res.status);
-    artists = await res.json();
-  } catch (e) {
-    console.error("Erreur loading artists:", e);
-  }
-}
-
-//--- TRANSITION SYSTEM ---
-function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-async function transitionTo(renderFn) {
+// --- ROUTER & TRANSITIONS ---
+async function transition(fn) {
     app.classList.add('page-exit');
-    await wait(350);
-    renderFn();
+    await wait(300);
+    fn();
     window.scrollTo(0, 0);
     app.classList.remove('page-exit');
     app.classList.add('page-enter');
-    void app.offsetWidth; 
+    void app.offsetWidth;
     app.classList.remove('page-enter');
 }
 
-//--- ROUTER ---
 async function router() {
-  if (!releases.length) await loadReleases();
-  if (!artists.length) await loadArtists(); 
-  
-  const hash = window.location.hash;
-  
-  transitionTo(() => {
-      // MODIFIÉ : Ajout de decodeURIComponent
-      if (hash.startsWith('#/release/')) {
-          const slug = decodeURIComponent(hash.split('/')[2]);
-          renderRelease(slug);
-      }
-      // --- NOUVELLE ROUTE ---
-      else if (hash.startsWith('#/artist/')) {
-          const slug = decodeURIComponent(hash.split('/')[2]);
-          renderArtist(slug);
-      }
-      else if (hash === '#/admin') renderAdmin();
-      else renderHome();
-  });
-}
-
-async function renderHome() {
-  // Générer le HTML des artistes
-  const artistsHtml = artists.map(a => `
-    <a href="#/artist/${a.slug}" class="artist-circle-item">
-      <div class="artist-img-wrap">
-        <img src="${a.pfp}" alt="${a.name}" loading="lazy">
-      </div>
-      <span class="artist-name">${escapeHtml(a.name)}</span>
-    </a>
-  `).join('');
-
-  app.innerHTML = `
-    <div class="section-header">
-      <h2>Artists</h2>
-    </div>
-    
-    <div class="artists-section">
-       <div class="artists-list">
-         ${artistsHtml}
-       </div>
-    </div>
-
-    <div class="home-header">
-      <div class="header-top-row">
-          <h2>Releases</h2>
-          
-          <div class="library-controls" id="library-controls">
-            <div class="control-group">
-              <button class="view-btn" data-action="toggle-group" title="Group by Artist" id="group-toggle-btn">${SVG_GROUP}</button>
-              <button class="view-btn" data-action="toggle-exclusive" title="Show Exclusive Only" id="exclusive-toggle-btn">${ICON_EXCLUSIVE}</button>
-            </div>
-            <div class="control-group" id="view-toggle">
-              <button class="view-btn ${currentView === 'grid' ? 'active' : ''}" data-action="toggle-view" data-view="grid" title="Grid View">${SVG_GRID}</button>
-              <button class="view-btn ${currentView === 'list' ? 'active' : ''}" data-action="toggle-view" data-view="list" title="List View">${SVG_LIST}</button>
-            </div>
-          </div>
-      </div>
-
-      <div class="header-bottom-row">
-          <div class="tabs" id="sort-tabs">
-            <button class="tab-btn active" data-sort="date">Recent</button>
-            <button class="tab-btn" data-sort="title">Name (A-Z)</button>
-            <button class="tab-btn" data-sort="artist">Artist (A-Z)</button>
-          </div>
-      </div>
-    </div>
-
-    <div class="grid-container" id="grid-container">
-    </div>`;
-    
-  document.getElementById('sort-tabs').addEventListener('click', handleSortClick);
-  document.getElementById('library-controls').addEventListener('click', handleControlsClick);
-  
-  currentSort = 'date';
-  isGrouped = false;
-  
-  const gridContainer = document.getElementById('grid-container');
-  gridContainer.classList.add('grid-page-enter');
-  renderGrid();
-  
-  await wait(50);
-  
-  void gridContainer.offsetWidth;
-  gridContainer.classList.remove('grid-page-enter');
-}
-
-function handleSortClick(e) {
-    const btn = e.target.closest('.tab-btn');
-    if (!btn) return;
-    
-    const sortBy = btn.dataset.sort;
-    if (sortBy === currentSort) return;
-    
-    currentSort = sortBy;
-    
-    document.querySelectorAll('#sort-tabs .tab-btn').forEach(b => {
-        b.classList.remove('active');
+    if (!state.releases.length) await loadData();
+    const hash = window.location.hash;
+    transition(() => {
+        if (hash.startsWith('#/release/')) renderRelease(decodeURIComponent(hash.split('/')[2]));
+        else if (hash.startsWith('#/artist/')) renderArtist(decodeURIComponent(hash.split('/')[2]));
+        else if (hash === '#/admin') renderAdmin();
+        else renderHome();
     });
-    btn.classList.add('active');
-    
-    renderGrid();
 }
 
-async function handleControlsClick(e) {
-    const btn = e.target.closest('.view-btn');
-    if (!btn) return;
+// --- RENDERERS ---
+function renderHome() {
+    const artistsHtml = state.artists.map(a => `
+        <a href="#/artist/${a.slug}" class="artist-circle-item">
+            <div class="artist-img-wrap"><img src="${a.pfp}" alt="${a.name}" loading="lazy"></div>
+            <span class="artist-name">${esc(a.name)}</span>
+        </a>`).join('');
 
-    const action = btn.dataset.action;
-    const gridContainer = document.getElementById('grid-container');
-    let needsReflow = false;
+    app.innerHTML = `
+    <div class="section-header"><h2>Artists</h2></div>
+    <div class="artists-section"><div class="artists-list">${artistsHtml}</div></div>
+    <div class="home-header">
+        <div class="header-top-row">
+            <h2>Releases</h2>
+            <div class="library-controls">
+                <div class="control-group">
+                    <button class="view-btn" id="grp-btn" title="Group">${ICONS.group}</button>
+                    <button class="view-btn" id="excl-btn" title="Exclusive">${ICONS.exclusive}</button>
+                </div>
+                <div class="control-group">
+                    <button class="view-btn ${state.view === 'grid' ? 'active' : ''}" data-v="grid">${ICONS.grid}</button>
+                    <button class="view-btn ${state.view === 'list' ? 'active' : ''}" data-v="list">${ICONS.list}</button>
+                </div>
+            </div>
+        </div>
+        <div class="tabs" id="sort-tabs">
+            <button class="tab-btn active" data-s="date">Recent</button>
+            <button class="tab-btn" data-s="title">Name (A-Z)</button>
+            <button class="tab-btn" data-s="artist">Artist (A-Z)</button>
+        </div>
+    </div>
+    <div class="grid-container" id="grid-ctn"></div>`;
 
-    if (action === 'toggle-view') {
-        const view = btn.dataset.view;
-        if (view === currentView) return;
-        currentView = view;
-        
-        document.querySelector('[data-view="grid"]').classList.toggle('active', currentView === 'grid');
-        document.querySelector('[data-view="list"]').classList.toggle('active', currentView === 'list');
-        needsReflow = true;
-        
-    }
-    else if (action === 'toggle-group') {
-        isGrouped = !isGrouped;
-        btn.classList.toggle('active', isGrouped);
-        needsReflow = true;
-    } else if (action === 'toggle-exclusive') { // <-- NOUVELLE LOGIQUE
-        isExclusiveFilterActive = !isExclusiveFilterActive;
-        btn.classList.toggle('active', isExclusiveFilterActive);
-        needsReflow = true;
-    }
-
-    if (needsReflow && gridContainer) {
-        gridContainer.classList.add('fading');
-        await wait(150);
+    document.getElementById('sort-tabs').onclick = e => {
+        if (!e.target.closest('.tab-btn')) return;
+        state.sort = e.target.closest('.tab-btn').dataset.s;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        e.target.closest('.tab-btn').classList.add('active');
         renderGrid();
-        gridContainer.classList.remove('fading');
-    }
+    };
+
+    const grpBtn = document.getElementById('grp-btn');
+    const exclBtn = document.getElementById('excl-btn');
+    const viewBtns = document.querySelectorAll('[data-v]');
+
+    grpBtn.onclick = () => { state.grouped = !state.grouped; grpBtn.classList.toggle('active'); renderGrid(); };
+    exclBtn.onclick = () => { state.exclusiveOnly = !state.exclusiveOnly; exclBtn.classList.toggle('active'); renderGrid(); };
+    viewBtns.forEach(b => b.onclick = () => {
+        const val = b.dataset.v;
+        if (state.view === val) return;
+        state.view = val;
+        viewBtns.forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        renderGrid();
+    });
+
+    renderGrid();
+    const grid = document.getElementById('grid-ctn');
+    grid.classList.add('grid-page-enter');
+    setTimeout(() => grid.classList.remove('grid-page-enter'), 50);
 }
 
-// MODIFIÉ : Affiche des PROJETS, pas des morceaux
 function renderGrid() {
-    const gridContainer = document.getElementById('grid-container');
-    if (!gridContainer) return;
-
-    if (!releases.length) {
-        gridContainer.innerHTML = '<p>Loading...</p>'; 
-        return; 
-    }
- // 1. Filtrer les releases
-    let releasesToRender = [...releases];
-    if (isExclusiveFilterActive) {
-        releasesToRender = releasesToRender.filter(r => r.exclusive === true);
-    }
+    const ctn = document.getElementById('grid-ctn');
+    if (!ctn) return;
     
-    let html = '';
-    
+    let items = state.releases.filter(r => !state.exclusiveOnly || r.exclusive);
     const sortFn = (a, b) => {
-        if (currentSort === 'date') return new Date(b.date) - new Date(a.date);
-        if (currentSort === 'title') return a.title.localeCompare(b.title);
-        if (currentSort === 'artist') return formatCredits(a.credits).localeCompare(formatCredits(b.credits));
-        return 0;
-    };
-     
-    // r est un PROJET (album/single)
-    const renderItem = (r) => {
-        if (currentView === 'grid') {
-            return `
-            <div class="card">
-                <a href="#/release/${r.slug}" class="card-link">
-                    <div class="card-image-wrap">
-                        <img src="${r.cover}" alt="${r.title}" loading="lazy">
-                    </div>
-                    <div class="card-text">
-                        <div class="card-title-row">
-                            <div class="title">${escapeHtml(r.title)}</div>
-                            ${createBadgeHtml(r)}
-                        </div>
-                        <div class="meta">
-                            <span>${escapeHtml(formatCredits(r.credits))}</span>
-                            <span class="meta-dot">●</span>
-                            <span>${new Date(r.date).getFullYear()}</span>
-                        </div>
-                        <div class="meta">
-                            <span>${capitalize(r.type)}</span>
-                        </div>
-                    </div>
-                </a>
-            </div>`;
-        } else {
-            return `
-            <a href="#/release/${r.slug}" class="list-item">
-                <img src="${r.cover}" alt="${r.title}" loading="lazy">
-                <div class="list-item-meta">
-                    <div class="list-title-row">
-                        <span class="title">${escapeHtml(r.title)}</span>
-                        ${createBadgeHtml(r)}
-                    </div>
-                    <div class="meta">${escapeHtml(formatCredits(r.credits))}</div>
-                </div>
-                <div class="list-date-row">
-                    <span>${formatDate(r.date)}</span>
-                </div>
-            </a>`;
-        }
+        if (state.sort === 'date') return new Date(b.date) - new Date(a.date);
+        if (state.sort === 'title') return a.title.localeCompare(b.title);
+        return fmtCreds(a.credits).localeCompare(fmtCreds(b.credits));
     };
 
-    if (isGrouped) {
-        const releasesByArtist = releasesToRender.reduce((acc, release) => {
-            // Utilise le premier artiste de la liste pour le groupement
-            const artist = release.credits[0] || 'Unknown Artist';
-            if (!acc[artist]) acc[artist] = [];
-            acc[artist].push(release);
+    const card = (r) => state.view === 'grid' ? `
+        <div class="card">
+            <a href="#/release/${r.slug}" class="card-link">
+                <div class="card-image-wrap"><img src="${r.cover}" loading="lazy"></div>
+                <div class="card-text">
+                    <div class="card-title-row"><div class="title">${esc(r.title)}</div>${createBadge(r)}</div>
+                    <div class="meta"><span>${esc(fmtCreds(r.credits))}</span><span class="meta-dot">●</span><span>${new Date(r.date).getFullYear()}</span></div>
+                    <div class="meta"><span>${capitalize(r.type)}</span></div>
+                </div>
+            </a>
+        </div>` : `
+        <a href="#/release/${r.slug}" class="list-item">
+            <img src="${r.cover}" loading="lazy">
+            <div class="list-item-meta">
+                <div class="list-title-row"><span class="title">${esc(r.title)}</span>${createBadge(r)}</div>
+                <div class="meta">${esc(fmtCreds(r.credits))}</div>
+            </div>
+            <div class="list-date-row"><span>${fmtDate(r.date)}</span></div>
+        </a>`;
+
+    if (state.grouped) {
+        const groups = items.reduce((acc, r) => {
+            const k = r.credits[0] || 'Unknown';
+            (acc[k] = acc[k] || []).push(r);
             return acc;
         }, {});
-
-        const sortedArtists = Object.keys(releasesByArtist).sort((a, b) => a.localeCompare(b));
-
-        const listClass = currentView === 'list' ? 'list' : '';
-        html += `<div class="${listClass}">`;
         
-        for (const artist of sortedArtists) {
-            html += `<h2 class="artist-group-header">${escapeHtml(artist)}</h2>`;
-            const artistTracks = releasesByArtist[artist].sort(sortFn);
-            
-            if (currentView === 'grid') {
-                html += '<div class="grid">';
-                html += artistTracks.map(renderItem).join('');
-                html += '</div>';
-            } else {
-                html += artistTracks.map(renderItem).join('');
-            }
-        }
-        
+        const listClass = state.view === 'list' ? 'list' : '';
+        let html = `<div class="${listClass}">`;
+        Object.keys(groups).sort().forEach(artist => {
+             html += `<h2 class="artist-group-header">${esc(artist)}</h2>`;
+             const tracks = groups[artist].sort(sortFn);
+             html += state.view === 'grid' ? `<div class="grid">${tracks.map(card).join('')}</div>` : tracks.map(card).join('');
+        });
         html += `</div>`;
-        
+        ctn.innerHTML = html;
     } else {
-        const sortedReleases = [...releasesToRender].sort(sortFn);
-        if (currentView === 'grid') {
-            html = `<div class="grid">${sortedReleases.map(renderItem).join('')}</div>`;
-        } else {
-            html = `<div class="list">${sortedReleases.map(renderItem).join('')}</div>`;
-        }
+        items.sort(sortFn);
+        ctn.innerHTML = `<div class="${state.view === 'grid' ? 'grid' : 'list'}">${items.map(card).join('')}</div>`;
     }
-
-    gridContainer.innerHTML = html;
-}
-
-
-function renderRelease(slug) {
-  const project = releases.find(x => x.slug === slug); // C'est un "projet" (album/single)
-  if (!project) { app.innerHTML = `<p>Release not found.</p>`; return; }
-  
-  const mainCredits = formatCredits(project.credits);
-  const desc = escapeHtml(project.description).replace(/\n/g, '<br>');
-  
-  const firstPlayableTrack = project.tracks.find(t => t.exclusive === true
- && t.audio);
-  let buttonHtml = '';
-
-  // --- NOUVELLE LOGIQUE ---
-  // Si le PROJET lui-même est marqué 'exclusive: true' (ex: "clés demo")
-  if (project.exclusive === true) {
-      if (firstPlayableTrack) {
-          buttonHtml = `
-            <button class="btn" id="play-release-btn"><i class="fi fi-sr-play"></i> Play</button>
-            ${project.type === 'single' ? `<a class="btn secondary" href="${firstPlayableTrack.audio}" download="${project.slug}.mp3">Download</a>` : ''}
-          `;
-      } else {
-          // Fallback au cas où un projet exclusif n'a pas d'audio
-          buttonHtml = `<button class="btn" disabled>Not Available</button>`;
-      }
-  } 
-  // Si le PROJET N'EST PAS exclusif (il est sur les plateformes, comme "RainbOw" ou "meraki")
-  // On affiche "Listen Now", MÊME SI un bonus track est jouable.
-  else {
-      // On cherche un lien de streaming sur la première track (ou l'URL que tu veux)
-      const streamUrl = project.tracks[0]?.stream_url || '#';
-      buttonHtml = `
-        <a class="btn" href="${streamUrl}" target="_blank"><i class="fi fi-sr-square-up-right"></i> Listen Now</a>
-      `;
-  }
-  
-  // Génère la liste des morceaux
-  const tracksHtml = project.tracks.map((track, index) => {
-    const trackCredits = formatCredits(track.credits);
-    // FIX MAJEUR: Forcer le résultat en booléen ('true' ou 'false') avec !!
-    const isPlayable = !!(track.exclusive !== false && track.audio);
-    
-    // NOUVEAU PRINT : Affiche la valeur booléenne forcée
-    console.log(`DEBUG: [Générateur] Track ${index}: isPlayable est réglé à ${isPlayable}`); 
-
-    const trackButton = isPlayable
-      ? `<button class="track-play-button">${SVG_PLAY}</button>`
-      : `<a href="${track.stream_url || '#'}" target="_blank" class="track-play-button">${SVG_LISTEN}</a>`;
-
-    return `
-    <div class="track-item" data-track-index="${index}" data-playable="${isPlayable}">
-      <div class="track-number">${track.track_number}</div>
-      <div class="track-meta">
-        <div class="track-title">
-          <span>${escapeHtml(track.title)}</span>
-          ${createBadgeHtml(track, 'tracklist', project)}
-        </div>
-        <div class="track-credits">${escapeHtml(trackCredits)}</div>
-      </div>
-      <div class="track-controls">
-        ${trackButton}
-      </div>
-    </div>
-    `;
-  }).join('');
-  
- // --- NOUVELLE LOGIQUE POUR LE PIED DE PAGE DE LA LISTE ---
-  let totalSeconds = 0;
-  project.tracks.forEach(t => {
-    if (t.duration_seconds) {
-      totalSeconds += t.duration_seconds;
-    }
-  });
-  
-  // Utilise Math.round pour obtenir le nombre de minutes (ex: 3.5 -> 4)
-  const totalMinutes = Math.round(totalSeconds / 60);
-  
-  // Texte pour le nombre de morceaux
-  const songCountText = project.tracks.length > 1 ? `${project.tracks.length} songs` : `1 song`;
-  
-  // Combiner le nombre de morceaux et la durée
-  let trackListInfo = songCountText;
-  if (totalMinutes > 0) {
-      trackListInfo += `, ${totalMinutes} ${totalMinutes > 1 ? 'minutes' : 'minute'}`;
-  }
-
-  // Préparer les textes pour la date et le copyright
-  const copyrightText = project.copyright ? `© ${project.copyright}` : '';
-  const dateText = formatDate(project.date);
-  // --- FIN DE LA NOUVELLE LOGIQUE ---
-
-  const html = `
-  <div class="page-header">
-    <a href="#" class="back-link">← Back to releases</a>
-  </div>
-
-  <section class="release-hero">
-    <img src="${project.cover}" alt="${project.title}">
-    <div class="release-details">
-      <div class="release-type">${capitalize(project.type)}</div>
-      <h1 class="release-title">${escapeHtml(project.title)}</h1>
-      <div class="release-artist">${escapeHtml(mainCredits)}</div>
-      <div class="release-year"><span>${escapeHtml(project.genre || 'Single')}</span><span class="meta-dot">●</span><span>${new Date(project.date).getFullYear()}</span></div>
-      
-      <div class="release-actions">
-         ${buttonHtml}
-      </div>
-
-      <p class="release-desc">${desc || '...'}</p>
-      
-      <div class="track-list-container">
-        <div class="track-list" id="track-list">
-          ${tracksHtml}
-        </div>
-        <div class="track-list-meta">
-          <div class="track-list-info">
-            ${trackListInfo}
-          </div>
-          
-          <div class="track-list-creds">
-            <span class="track-list-date">${dateText}</span>
-            ${copyrightText ? `<span class="meta-dot">●</span><span class="track-list-copyright">${copyrightText}</span>` : ''}
-          </div>
-        </div>
-      </div>
-      
-    </div>
-  </section>`;
-  
-  app.innerHTML = html;
-  
-  // Écouteur pour le bouton "Play" principal (joue le 1er morceau)
-  // ON VÉRIFIE LES MÊMES CONDITIONS QUI ONT CRÉÉ LE BOUTON "PLAY"
-  if (firstPlayableTrack && project.exclusive === true) {
-    document.getElementById('play-release-btn').addEventListener('click', () => {
-        playTrack(firstPlayableTrack, project);
-    });
-  }
-  
-  // Écouteurs pour chaque morceau dans la liste
-  document.getElementById('track-list').addEventListener('click', (e) => {
-     console.log("DEBUG: --- Clic sur liste des morceaux détecté ---");
-     const trackItem = e.target.closest('.track-item');
-     
-     if (!trackItem) {
-        console.log("DEBUG: Clic ignoré (pas sur un élément track-item).");
-        return;
-     }
-
-     const currentAttr = trackItem.dataset.playable;
-     console.log("DEBUG: Élément track-item trouvé. data-playable:", currentAttr);
-     
-     // NOUVEAU PRINT : Montre ce que JS essaie de comparer
-     console.log(`DEBUG: Vérification: "${currentAttr}" === "true" ?`); 
-     
-     if (trackItem && currentAttr === 'true') {
-         console.log("DEBUG: Condition PLAYABLE Remplie. Tentative de lecture...");
-         
-         const trackIndex = parseInt(trackItem.dataset.trackIndex, 10);
-         const track = project.tracks[trackIndex];
-         
-         playTrack(track, project);
-         
-         console.log(`DEBUG: playTrack() appelée pour: ${track.title}`);
-     } else {
-        console.log("DEBUG: Condition PLAYABLE FAUSSE. Lancement du morceau impossible.");
-     }
-  });
 }
 
 function renderArtist(slug) {
-  const artist = artists.find(a => a.slug === slug);
-  if (!artist) { app.innerHTML = `<p>Artist not found.</p>`; return; }
+    const artist = state.artists.find(a => a.slug === slug);
+    if (!artist) return app.innerHTML = `<p>Artist not found.</p>`;
 
-  // 1. Trouver la dernière release
-  const artistReleases = releases.filter(r => r.credits.includes(artist.slug));
-  artistReleases.sort((a, b) => new Date(b.date) - new Date(a.date));
-  const latestRelease = artistReleases[0];
+    const rels = state.releases.filter(r => r.credits.includes(artist.slug)).sort((a, b) => new Date(b.date) - new Date(a.date));
+    const latest = rels[0];
+    const releaseCount = rels.length;
+    
+    const linktreeUrl = artist.linktree || `https://linktr.ee/${artist.slug}`; 
+    const socialBtns = `
+        <a href="${linktreeUrl}" target="_blank" class="btn">${ICONS.link} Listen Now</a>
+        <a href="#" class="btn secondary icon-only" title="Website">${ICONS.globe}</a>
+        <a href="#" class="btn secondary icon-only" title="Spotify">${ICONS.spotify}</a>
+    `;
 
-  // 2. Générer le HTML de la carte (Structure identique à la grille)
-  let latestReleaseHtml = '';
-  if (latestRelease) {
-      latestReleaseHtml = `
-        <div class="latest-release-wrapper">
-            <h3 class="section-title">Latest Release</h3>
-            
-            <div class="artist-latest-card-container"> 
+    let latestHtml = '';
+    if (latest) {
+        latestHtml = `
+        <div class="latest-section">
+            <h2>Latest Release</h2>
+            <div class="latest-card-wrapper">
                 <div class="card">
-                    <a href="#/release/${latestRelease.slug}" class="card-link">
-                        <div class="card-image-wrap">
-                            <img src="${latestRelease.cover}" alt="${latestRelease.title}">
-                        </div>
+                    <a href="#/release/${latest.slug}" class="card-link">
+                        <div class="card-image-wrap"><img src="${latest.cover}"></div>
                         <div class="card-text">
-                            <div class="card-title-row">
-                                <div class="title">${escapeHtml(latestRelease.title)}</div>
-                                ${createBadgeHtml(latestRelease)}
-                            </div>
-                            <div class="meta">
-                                <span>${new Date(latestRelease.date).getFullYear()}</span>
-                                <span class="meta-dot">●</span>
-                                <span>${capitalize(latestRelease.type)}</span>
-                            </div>
+                            <div class="card-title-row"><div class="title">${esc(latest.title)}</div>${createBadge(latest)}</div>
+                            <div class="meta"><span>${new Date(latest.date).getFullYear()}</span><span class="meta-dot">●</span><span>${esc(latest.type)}</span></div>
                         </div>
                     </a>
                 </div>
             </div>
-        </div>
-      `;
-  } else {
-      latestReleaseHtml = `<p style="color:var(--muted)">No releases found for this artist.</p>`;
-  }
-
-  const html = `
-  <div class="page-header">
-    <a href="#" class="back-link">← Back to home</a>
-  </div>
-
-  <section class="artist-profile">
-    <div class="artist-header">
-        <img src="${artist.pfp || './tracks/covers/placeholder-cover.png'}" alt="${artist.name}" class="artist-pfp-large">
-        <h1 class="artist-name-large">${escapeHtml(artist.name)}</h1>
-    </div>
-    
-    <div class="artist-bio">
-        <p>${escapeHtml(artist.bio || 'No biography available.')}</p>
-    </div>
-
-    <div class="artist-discography">
-        ${latestReleaseHtml}
-    </div>
-  </section>
-  `;
-
-  app.innerHTML = html;
-}
-//--- FONCTIONS MODAL ---
-// ... (reste du code inchangé) ...
-
-//--- FONCTIONS MODAL ---
-function closeModal() {
-    return new Promise(resolve => {
-        modalOverlay.classList.remove('visible');
-        setTimeout(() => {
-            modalOverlay.classList.add('hidden');
-            resolve();
-        }, 300);
-    });
-}
-function showCustomAlert(title, text) {
-    modalTitle.textContent = title;
-    modalText.innerHTML = text;
-    modalInputArea.classList.add('hidden');
-    modalSubmit.textContent = 'OK';
-    modalCancel.classList.add('hidden');
-    
-    modalOverlay.classList.remove('hidden');
-    requestAnimationFrame(() => modalOverlay.classList.add('visible'));
-
-    return new Promise(resolve => {
-        const handleSubmit = async () => {
-            await closeModal();
-            cleanupListeners();
-            resolve(true);
-        };
-        const handleOverlayClick = async (e) => {
-            if (e.target === modalOverlay) await handleSubmit();
-        };
-        const handleKeydown = async (e) => {
-            if (e.key === 'Escape' || e.key === 'Enter') await handleSubmit();
-        };
-        const cleanupListeners = () => {
-            modalSubmit.removeEventListener('click', handleSubmit);
-            modalOverlay.removeEventListener('click', handleOverlayClick);
-            window.removeEventListener('keydown', handleKeydown);
-        };
-        modalSubmit.addEventListener('click', handleSubmit);
-        modalOverlay.addEventListener('click', handleOverlayClick);
-        window.addEventListener('keydown', handleKeydown);
-    });
-}
-function showCustomPrompt(title, text, placeholder) {
-    modalTitle.textContent = title;
-    modalText.innerHTML = text;
-    modalInputArea.classList.remove('hidden');
-    modalPassword.value = '';
-    modalPassword.placeholder = placeholder || '';
-    modalSubmit.textContent = 'Login';
-    modalCancel.classList.remove('hidden');
-
-    modalOverlay.classList.remove('hidden');
-    requestAnimationFrame(() => modalOverlay.classList.add('visible'));
-    
-    return new Promise(resolve => {
-        const handleSubmit = async () => {
-            const value = modalPassword.value;
-            await closeModal();
-            cleanupListeners();
-            resolve(value);
-        };
-        const handleCancel = async () => {
-            await closeModal();
-            cleanupListeners();
-            resolve(null);
-        };
-        const handleOverlayClick = async (e) => {
-            if (e.target === modalOverlay) await handleCancel();
-        };
-        const handleKeydown = async (e) => {
-            if (e.key === 'Escape') await handleCancel();
-            if (e.key === 'Enter') await handleSubmit();
-        };
-        const cleanupListeners = () => {
-            modalSubmit.removeEventListener('click', handleSubmit);
-            modalCancel.removeEventListener('click', handleCancel);
-            modalOverlay.removeEventListener('click', handleOverlayClick);
-            window.removeEventListener('keydown', handleKeydown);
-        };
-        modalSubmit.addEventListener('click', handleSubmit);
-        modalCancel.addEventListener('click', handleCancel);
-        modalOverlay.addEventListener('click', handleOverlayClick);
-        window.addEventListener('keydown', handleKeydown);
-    });
-}
-
-//--- LOGIQUE ADMIN ---
-adminIcon.addEventListener('click', async () => {
-  const p = await showCustomPrompt('Admin Login', 'Enter admin password:', 'Password');
-  
-  if (p === '1234') {
-    window.location.hash = '#/admin';
-  } else if (p !== null) {
-    await showCustomAlert('Error', 'Wrong password.');
-  }
-});
-function renderAdmin() {
-  app.innerHTML = `<section>
-  <div class="page-header">
-    <a href="#" class="back-link">← Back to releases</a>
-  </div>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-    <h2>Database Manager</h2>
-  </div>
-  <div class="admin-area">
-  <p style="color:var(--muted); margin-bottom:12px;">Edit standard JSON format.</p>
-  <textarea class="jsonedit" id="json-edit">${escapeHtml(JSON.stringify(releases, null, 2))}</textarea>
-  <div style="margin-top:20px; display:flex; gap:12px;">
-  <button class="btn" id="download-json">Download JSON</button>
-  <button class="btn secondary" id="apply-json">Apply Test</button>
-  </div></div></section>`;
-  
-  document.getElementById('download-json').addEventListener('click', () => downloadFile('releases.json', document.getElementById('json-edit').value));
-  
-  document.getElementById('apply-json').addEventListener('click', async () => {
-    try { 
-      releases = JSON.parse(document.getElementById('json-edit').value); 
-      await showCustomAlert('Success', 'Applied in memory.');
-    } catch (e) { 
-      await showCustomAlert('Error', 'JSON error: ' + e.message);
+        </div>`;
     }
-  });
+
+    const discogHtml = rels.map(r => `
+        <div class="card">
+            <a href="#/release/${r.slug}" class="card-link">
+                <div class="card-image-wrap"><img src="${r.cover}" loading="lazy"></div>
+                <div class="card-text">
+                    <div class="card-title-row"><div class="title">${esc(r.title)}</div>${createBadge(r)}</div>
+                    <div class="meta"><span>${new Date(r.date).getFullYear()}</span><span class="meta-dot">●</span><span>${esc(r.type)}</span></div>
+                </div>
+            </a>
+        </div>`).join('');
+
+    app.innerHTML = `
+    <div class="page-header"><a href="#" class="back-link">← Back to home</a></div>
+    <div class="artist-profile-header">
+        <img src="${artist.pfp}" alt="${artist.name}" class="artist-pfp-large">
+        <div class="artist-info">
+            <div class="artist-meta-row">
+                <h1 class="artist-name-large">${esc(artist.name)}</h1>
+                
+            </div>
+            <p class="artist-bio">${esc(artist.bio || 'No biography available.')}</p>
+            <div class="artist-actions">
+            ${socialBtns}</div>
+        </div>
+    </div>
+    ${latestHtml}
+    <div class="section-header"><h2>Discography</h2></div>
+    <div class="grid">${discogHtml}</div>`;
 }
 
-//--- PLAYBACK ---
-function updateMediaSession(track, project) {
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: track.title,
-      artist: formatCredits(track.credits),
-      album: project.title,
-      artwork: [
-        { src: project.cover, sizes: '512x512', type: 'image/png' },
-      ]
-    });
-  }
-}
+// RESTORED TO ORIGINAL LOGIC FOR ACCURACY
+function renderRelease(slug) {
+    const p = state.releases.find(x => x.slug === slug);
+    if (!p) return app.innerHTML = `<p>Release not found.</p>`;
 
-// MODIFIÉ : Prend un objet 'track' et 'project'
-function playTrack(track, project) {
-  if (!track.audio) return; // Ne joue que s'il y a un fichier audio
-  
-  // Met à jour l'état global
-  currentProject = project;
-  currentTrackIndex = track.track_number - 1;
-  
-  const currentSrc = decodeURIComponent(audio.src);
-  const isSameTrack = currentSrc.includes(track.audio.split('/').pop());
-  
-  // Met à jour le player
-  dockCover.src = project.cover; 
-  dockTitle.textContent = track.title; 
-  dockSub.textContent = formatCredits(track.credits);
-  downloadLink.href = track.audio; 
-  downloadLink.download = `${project.slug}-${track.title}.mp3`;
-  updateMediaSession(track, project);
-  
-  if(!isSameTrack) {
-      audio.src = track.audio;
-      seek.value = 0;
-      curTime.textContent = '0:00';
-      updateSliderBackground(0);
-      
-      audio.play();
-      isPlaying = true;
-  } else {
-      togglePlay();
-  }
-  
-  playerDock.classList.add('active'); 
-  updatePlayBtn();
-  updateTrackListUI(currentProject.slug, currentTrackIndex, isPlaying);
-
-  
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.playbackState = 'playing';
-  }
-}
-
-// Met à jour l'UI (player et liste de morceaux)
-function updatePlayBtn() {
-    const icon = isPlaying ? SVG_PAUSE : SVG_PLAY;
-    btnPlay.innerHTML = icon;
+    const mainCredits = fmtCreds(p.credits);
+    const desc = esc(p.description).replace(/\n/g, '<br>');
+    const firstPlayable = p.tracks.find(t => t.exclusive !== false && t.audio);
     
-    const bigBtn = document.getElementById('play-release-btn');
-    if(bigBtn) bigBtn.innerHTML = `${icon} ${isPlaying ? 'Pause' : 'Play'}`;
-    
-    // Met à jour le bouton play dans la liste de morceaux
-    updateTrackListUI(currentProject?.slug, currentTrackIndex, isPlaying);
-
-}
-
-// NOUVEAU : Surligne le morceau en cours
-function updateTrackListUI(projectSlug, trackIndex, playing) {
-
-    // S'assure qu'on est sur la bonne page
-    if (!window.location.hash.includes(projectSlug)) return;
-    
-    document.querySelectorAll('.track-item').forEach((item, index) => {
-        const playBtn = item.querySelector('.track-play-button');
-        if (index === trackIndex) {
-            item.classList.toggle('playing', playing);
-            if (playBtn) playBtn.innerHTML = playing ? SVG_PAUSE : SVG_PLAY;
+    let buttonHtml = '';
+    if (p.exclusive === true) {
+        if (firstPlayable) {
+            buttonHtml = `<button class="btn" id="play-rel-btn">${ICONS.play} Play</button>
+            ${p.type === 'single' ? `<a class="btn secondary" href="${firstPlayable.audio}" download="${p.slug}.mp3">Download</a>` : ''}`;
         } else {
-            item.classList.remove('playing');
-            if (playBtn) playBtn.innerHTML = SVG_PLAY;
+            buttonHtml = `<button class="btn" disabled>Not Available</button>`;
         }
+    } else {
+        const streamUrl = p.tracks[0]?.stream_url || '#';
+        buttonHtml = `<a class="btn" href="${streamUrl}" target="_blank">${ICONS.link} Listen Now</a>`;
+    }
+
+    const tracksHtml = p.tracks.map((t, i) => {
+        const isPlayable = !!(t.exclusive !== false && t.audio);
+        const trackButton = isPlayable
+          ? `<button class="track-play-button">${ICONS.play}</button>`
+          : `<a href="${t.stream_url || '#'}" target="_blank" class="track-play-button">${ICONS.link}</a>`;
+
+        return `
+        <div class="track-item" data-idx="${i}" data-playable="${isPlayable}">
+            <div class="track-number">${t.track_number}</div>
+            <div class="track-meta">
+                <div class="track-title"><span>${esc(t.title)}</span>${createBadge(t, 'tracklist', p)}</div>
+                <div class="track-credits">${esc(fmtCreds(t.credits))}</div>
+            </div>
+            <div class="track-controls">${trackButton}</div>
+        </div>`;
+    }).join('');
+
+    let totalSeconds = p.tracks.reduce((acc, t) => acc + (t.duration_seconds || 0), 0);
+    const totalMinutes = Math.round(totalSeconds / 60);
+    const songCountText = p.tracks.length > 1 ? `${p.tracks.length} songs` : `1 song`;
+    let trackListInfo = songCountText;
+    if (totalMinutes > 0) trackListInfo += `, ${totalMinutes} ${totalMinutes > 1 ? 'minutes' : 'minute'}`;
+
+    const html = `
+    <div class="page-header"><a href="#" class="back-link">← Back to releases</a></div>
+    <section class="release-hero">
+        <img src="${p.cover}" alt="${p.title}">
+        <div class="release-details">
+            <div class="release-type">${capitalize(p.type)}</div>
+            <h1 class="release-title">${esc(p.title)}</h1>
+            <div class="release-artist">${esc(mainCredits)}</div>
+            <div class="release-year"><span>${esc(p.genre || 'Single')}</span><span class="meta-dot">●</span><span>${new Date(p.date).getFullYear()}</span></div>
+            <div class="release-actions">${buttonHtml}</div>
+            <p class="release-desc">${desc}</p>
+            <div class="track-list-container">
+                <div class="track-list" id="track-list">${tracksHtml}</div>
+                <div class="track-list-meta">
+                    <div class="track-list-info">${trackListInfo}</div>
+                    <div class="track-list-creds">
+                        <span class="track-list-date">${fmtDate(p.date)}</span>
+                        ${p.copyright ? `<span class="meta-dot">●</span><span class="track-list-copyright">© ${p.copyright}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>`;
+
+    app.innerHTML = html;
+
+    if (firstPlayable && p.exclusive === true) {
+        document.getElementById('play-rel-btn').onclick = () => playTrack(firstPlayable, p);
+    }
+    document.getElementById('track-list').addEventListener('click', (e) => {
+        const item = e.target.closest('.track-item');
+        if (item && item.dataset.playable === 'true') playTrack(p.tracks[item.dataset.idx], p);
     });
+    updateUIState();
+}
+
+function renderAdmin() {
+    app.innerHTML = `
+    <div class="page-header"><a href="#" class="back-link">← Back</a></div>
+    <div class="section-header" id="database-manager-label" ><h2>Database Manager</h2></div>
+    <div class="admin-area">
+        <textarea class="jsonedit" id="je">${esc(JSON.stringify(state.releases, null, 2))}</textarea>
+        <div class="modal-buttons">
+            <button class="btn" id="dl-json">Download</button>
+            <button class="btn secondary" id="save-json">Apply</button>
+        </div>
+    </div>`;
+    document.getElementById('dl-json').onclick = () => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([document.getElementById('je').value], {type:'application/json'}));
+        a.download = 'releases.json';
+        a.click();
+    };
+    document.getElementById('save-json').onclick = () => {
+        try { state.releases = JSON.parse(document.getElementById('je').value); showModal('Success', 'Applied in memory.'); } 
+        catch (e) { showModal('Error', e.message); }
+    };
+}
+
+// --- AUDIO PLAYER ---
+function playTrack(track, project) {
+    if (!track.audio) return;
+    state.currentProject = project;
+    state.trackIndex = track.track_number - 1;
+
+    const isSame = decodeURIComponent(audio.src).includes(track.audio.split('/').pop());
+    
+    playerElements.dock.classList.add('active');
+    playerElements.cover.src = project.cover;
+    playerElements.title.textContent = track.title;
+    playerElements.sub.textContent = fmtCreds(track.credits);
+    playerElements.dlLink.href = track.audio;
+    playerElements.dlLink.download = `${project.slug}-${track.title}.mp3`;
+
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: track.title, artist: fmtCreds(track.credits), album: project.title,
+            artwork: [{ src: project.cover, sizes: '512x512', type: 'image/png' }]
+        });
+    }
+
+    if (!isSame) {
+        audio.src = track.audio;
+        playerElements.seek.value = 0;
+        updateSeekBg(0);
+        audio.play();
+        state.isPlaying = true;
+    } else togglePlay();
+    updateUIState();
 }
 
 function togglePlay() {
-    if (!audio.src && releases.length > 0) {
-        // Trouve le premier morceau jouable du premier album
-        const firstProject = releases.find(p => p.tracks.some(t => t.exclusive !== false
-));
-        if (firstProject) {
-            const firstTrack = firstProject.tracks.find(t => t.exclusive !== false
- && t.audio);
-            if (firstTrack) {
-                playTrack(firstTrack, firstProject);
+    if (!audio.src) return;
+    state.isPlaying ? audio.pause() : audio.play();
+    state.isPlaying = !state.isPlaying;
+    updateUIState();
+}
+
+function updateUIState() {
+    const icon = state.isPlaying ? ICONS.pause : ICONS.play;
+    playerElements.playBtn.innerHTML = icon;
+    const bigBtn = document.getElementById('play-rel-btn');
+    if (bigBtn) bigBtn.innerHTML = `${icon} ${state.isPlaying ? 'Pause' : 'Play'}`;
+    
+    if (state.currentProject && window.location.hash.includes(state.currentProject.slug)) {
+        document.querySelectorAll('.track-item').forEach((el, i) => {
+            const btn = el.querySelector('.track-play-button');
+            if (i === state.trackIndex) {
+                el.classList.add('playing');
+                if (btn) btn.innerHTML = state.isPlaying ? ICONS.pause : ICONS.play;
+            } else {
+                el.classList.remove('playing');
+                if (btn) btn.innerHTML = ICONS.play;
             }
+        });
+    }
+}
+
+function nextTrack(dir = 1) {
+    if (!state.currentProject) return;
+    let idx = state.trackIndex + dir;
+    while (idx >= 0 && idx < state.currentProject.tracks.length) {
+        const t = state.currentProject.tracks[idx];
+        if ((t.exclusive !== false && t.audio)) { playTrack(t, state.currentProject); return; }
+        idx += dir;
+    }
+}
+
+function updateSeekBg(pct) {
+    playerElements.seek.style.background = `linear-gradient(to right, ${cssVars.paper} ${pct}%, ${cssVars.track} ${pct}%)`;
+}
+
+
+// --- MODAL SYSTEM (FIXED) ---
+function showModal(title, text, input = false, placeholder = '') {
+    modalElements.title.textContent = title;
+    modalElements.text.innerHTML = text;
+    modalElements.input.classList.toggle('hidden', !input);
+    modalElements.cancel.classList.toggle('hidden', !input); // Cache cancel si c'est juste une alerte
+    modalElements.submit.textContent = input ? 'Login' : 'OK';
+    
+    if(input) {
+        modalElements.pass.value = '';
+        modalElements.pass.placeholder = placeholder;
+        modalElements.pass.focus();
+    }
+    
+    modalElements.overlay.classList.remove('hidden');
+    // Petit délai pour permettre au navigateur de rendre le display:flex avant l'opacité
+    requestAnimationFrame(() => modalElements.overlay.classList.add('visible'));
+
+    return new Promise(resolve => {
+        const cleanup = () => {
+            modalElements.submit.onclick = null;
+            modalElements.cancel.onclick = null;
+            modalElements.pass.onkeydown = null;
+        };
+
+        const close = (result) => {
+            modalElements.overlay.classList.remove('visible');
+            // On attend la fin de la transition CSS (300ms) avant de cacher
+            setTimeout(() => {
+                modalElements.overlay.classList.add('hidden');
+                cleanup();
+                resolve(result);
+            }, 300);
+        };
+
+        modalElements.submit.onclick = () => close(input ? modalElements.pass.value : true);
+        modalElements.cancel.onclick = () => close(null);
+        
+        // Touche Entrée dans l'input
+        if(input) {
+            modalElements.pass.onkeydown = (e) => {
+                if(e.key === 'Enter') close(modalElements.pass.value);
+            };
         }
-        return;
-    }
-    isPlaying ? audio.pause() : audio.play();
-    isPlaying = !isPlaying;
-    updatePlayBtn();
-    
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-    }
+    });
 }
 
-// MODIFIÉ : Navigue dans l'album actuel
-function playNext() {
-    if (!currentProject) return; // Ne fait rien si aucun album n'est chargé
+// --- SECURITY (HASHING) ---
+async function verifyPassword(input) {
+    if (!input) return false;
+    const encoder = new TextEncoder();
+    const data = encoder.encode(input);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     
-    let nextIndex = (currentTrackIndex + 1);
-    
-    // Boucle pour trouver le prochain morceau JOUABLE dans l'album
-    while (nextIndex < currentProject.tracks.length && (currentProject.tracks[nextIndex].exclusive === false || !currentProject.tracks[nextIndex].audio)) {
-        nextIndex++;
-    }
-    
-    if (nextIndex < currentProject.tracks.length) {
-        playTrack(currentProject.tracks[nextIndex], currentProject);
-    }
-}
-function playPrev() {
-    if (!currentProject) return;
-    
-    let prevIndex = (currentTrackIndex - 1);
-
-    // Boucle pour trouver le morceau JOUABLE précédent
-    while (prevIndex >= 0 && (currentProject.tracks[prevIndex].exclusive === false || !currentProject.tracks[prevIndex].audio)) {
-        prevIndex--;
-    }
-    
-    if (prevIndex >= 0) {
-        playTrack(currentProject.tracks[prevIndex], currentProject);
-    }
+    // Hash SHA-256 de "1234"
+    return hashHex === "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
 }
 
-function updateSliderBackground(pct) {
-    const percent = pct !== undefined ? pct : seek.value || 0;
-    seek.style.background = `linear-gradient(to right, ${paperColor} ${percent}%, ${trackColor} ${percent}%)`;
+// --- ADMIN LOGIC (UPDATED) ---
+let adminCurrentView = 'releases'; // 'releases' ou 'artists'
+
+function renderAdmin() {
+    const getCurrentJson = () => JSON.stringify(adminCurrentView === 'releases' ? state.releases : state.artists, null, 2);
+    const getRepoUrl = () => `https://github.com/dxnel/lyndxn/blob/main/${adminCurrentView}.json`;
+
+    app.innerHTML = `
+    <div class="page-header"><a href="#" class="back-link">← Back</a></div>
+    <div class="section-header">
+        <h2>Database Manager</h2>
+    </div>
+    
+    <div class="admin-area">
+        <div class="admin-controls">
+            <div class="admin-tabs">
+                <button class="admin-tab-btn ${adminCurrentView === 'releases' ? 'active' : ''}" id="tab-releases">Releases</button>
+                <button class="admin-tab-btn ${adminCurrentView === 'artists' ? 'active' : ''}" id="tab-artists">Artists</button>
+            </div>
+            <a href="${getRepoUrl()}" target="_blank" class="btn secondary" style="padding: 8px 16px; font-size: 12px;">
+                ${ICONS.globe} View on GitHub
+            </a>
+        </div>
+
+        <textarea class="jsonedit" id="je">${esc(getCurrentJson())}</textarea>
+        
+        <div class="modal-buttons" style="margin-top: 20px;">
+            <button class="btn secondary" id="dl-json">Download</button>
+            <button class="btn" id="save-json">Apply</button>
+        </div>
+    </div>`;
+
+    // Gestion des Onglets
+    const updateView = (view) => {
+        adminCurrentView = view;
+        renderAdmin(); // Re-render pour mettre à jour le contenu et les boutons
+    };
+
+    document.getElementById('tab-releases').onclick = () => updateView('releases');
+    document.getElementById('tab-artists').onclick = () => updateView('artists');
+
+    // Actions
+    document.getElementById('dl-json').onclick = () => {
+        const content = document.getElementById('je').value;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([content], {type:'application/json'}));
+        a.download = `${adminCurrentView}.json`;
+        a.click();
+    };
+
+    document.getElementById('save-json').onclick = async () => {
+        try { 
+            const parsed = JSON.parse(document.getElementById('je').value);
+            if(adminCurrentView === 'releases') state.releases = parsed;
+            else state.artists = parsed;
+            
+            await showModal('Success', `Successfully applied changes to <b>${adminCurrentView}</b> in local memory.`);
+        } catch (e) { 
+            await showModal('JSON Error', e.message); 
+        }
+    };
 }
 
+// --- INIT LISTENERS ---
+// (Remplace ton ancien listener admin-icon par celui-ci qui est async)
+document.getElementById('admin-icon').onclick = async () => {
+    const pass = await showModal('Admin Access', 'Enter secured password:', true, '••••');
+    
+    if (pass === null) return; // Cancelled
 
-//--- INIT ---
+    // Petit délai artificiel pour le "loading" effect (optionnel) et pour laisser la modal se fermer proprement
+    await wait(200);
+
+    if (await verifyPassword(pass)) {
+        window.location.hash = '#/admin';
+    } else {
+        // La modal précédente est fermée grâce au await dans showModal
+        await showModal('Access Denied', 'The password you entered is incorrect.');
+    }
+};
+
+// --- INIT ---
 function init() {
-  btnPlay.innerHTML = SVG_PLAY; // Initialise le bouton play
-  
-  try {
-      paperColor = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
-      trackColor = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
-      if (!paperColor) paperColor = '#ededed';
-      if (!trackColor) trackColor = '#444';
-  } catch (e) {
-      console.error("Could not get CSS vars for slider, using fallbacks:", e);
-      paperColor = '#ededed';
-      trackColor = '#444';
-  }
-  
-  updateSliderBackground(0);
+    const comp = getComputedStyle(document.documentElement);
+    cssVars.paper = comp.getPropertyValue('--paper').trim() || '#ededed';
+    cssVars.track = comp.getPropertyValue('--border').trim() || '#444';
 
-  btnPlay.addEventListener('click', togglePlay);
-  btnNext.addEventListener('click', playNext);
-  btnPrev.addEventListener('click', playPrev);
-  
-  audio.addEventListener('timeupdate', () => {
-      curTime.textContent = formatTime(audio.currentTime);
-      const pct = (audio.currentTime / audio.duration * 100) || 0;
-      seek.value = pct;
-      updateSliderBackground();
-  });
-  
-  audio.addEventListener('loadedmetadata', () => { durTime.textContent = formatTime(audio.duration); });
-  audio.addEventListener('ended', () => playNext());
-  
-  seek.addEventListener('input', () => { 
-      if (!audio.duration) return; 
-      const newTime = (seek.value / 100) * audio.duration;
-      audio.currentTime = newTime;
-      updateSliderBackground();
-  });
-  
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.setActionHandler('previoustrack', playPrev);
-    navigator.mediaSession.setActionHandler('nexttrack', playNext);
-    navigator.mediaSession.setActionHandler('play', togglePlay);
-    navigator.mediaSession.setActionHandler('pause', togglePlay);
-  }
-  
-  window.addEventListener('hashchange', router);
-  document.getElementById('year').textContent = new Date().getFullYear();
-  
-  loadReleases().then(router);
+    playerElements.playBtn.innerHTML = ICONS.play;
+    playerElements.playBtn.onclick = togglePlay;
+    playerElements.nextBtn.onclick = () => nextTrack(1);
+    playerElements.prevBtn.onclick = () => nextTrack(-1);
+    
+    audio.ontimeupdate = () => {
+        playerElements.curTime.textContent = fmtTime(audio.currentTime);
+        const pct = (audio.currentTime / audio.duration * 100) || 0;
+        playerElements.seek.value = pct;
+        updateSeekBg(pct);
+    };
+    audio.onloadedmetadata = () => playerElements.durTime.textContent = fmtTime(audio.duration);
+    audio.onended = () => nextTrack(1);
+    
+    playerElements.seek.oninput = () => {
+        if (audio.duration) audio.currentTime = (playerElements.seek.value / 100) * audio.duration;
+        updateSeekBg(playerElements.seek.value);
+    };
+
+    document.getElementById('admin-icon').onclick = async () => {
+        if (await showModal('Admin', 'Enter password:', true) === '1234') window.location.hash = '#/admin';
+        else showModal('Error', 'Wrong password.');
+    };
+
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', togglePlay);
+        navigator.mediaSession.setActionHandler('pause', togglePlay);
+        navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack(1));
+        navigator.mediaSession.setActionHandler('previoustrack', () => nextTrack(-1));
+    }
+
+    window.onhashchange = router;
+    document.getElementById('year').textContent = new Date().getFullYear();
+    document.getElementById('home-link').onclick = (e) => { e.preventDefault(); window.location.hash = ''; };
+    
+    loadData().then(router);
 }
 
 init();
