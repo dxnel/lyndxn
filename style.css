@@ -30,6 +30,8 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  touch-action: manipulation; /* Désactive le délai et le zoom double-tap */
+  -webkit-text-size-adjust: 100%; /* Empêche le zoom auto du texte en format paysage */
 }
 
 body { padding-bottom: 140px; }
@@ -250,6 +252,47 @@ a.card-link { display: flex; flex-direction: column; gap: 16px; width: 100%; tra
   background: var(--muted); /* Devient plus clair au survol */
 }
 
+/* Ajouts pour les morceaux verrouillés */
+
+/* Badge Cadenas */
+.badge.locked {
+  background: var(--surface-hover);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+/* État Verrouillé du morceau */
+.track-item.locked {
+  opacity: 0.5; /* Grisé */
+}
+
+.track-item.locked:hover {
+  opacity: 0.8;
+  background: var(--surface);
+}
+
+.track-item.locked .track-title,
+.track-item.locked .track-number {
+  color: var(--muted); /* Texte plus sombre */
+}
+
+/* Bouton Unlock spécifique */
+.track-unlock-button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 18px;
+  color: var(--muted); /* Cadenas gris par défaut */
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.track-item.locked:hover .track-unlock-button {
+  color: var(--accent); /* Devient blanc au survol */
+  transform: scale(1.1);
+}
+
 /* ======================= */
 /* =   NEW ARTIST PAGE   = */
 /* ======================= */
@@ -310,7 +353,7 @@ a.card-link { display: flex; flex-direction: column; gap: 16px; width: 100%; tra
   margin-bottom: 15px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 .release-year .meta-dot { font-size: 10px; opacity: 0.5; flex-shrink: 0; }
 .release-desc {
@@ -330,7 +373,7 @@ a.card-link { display: flex; flex-direction: column; gap: 16px; width: 100%; tra
   font-size: 13px;
   color: var(--muted);
 }
-.track-list-creds { display: flex; align-items: center; gap: 8px; }
+.track-list-creds { display: flex; align-items: center; gap: 4px; }
 .track-list-creds .meta-dot { font-size: 10px; opacity: 0.5; }
 
 .track-list { display: flex; flex-direction: column; border-top: 1px solid var(--border); }
@@ -377,21 +420,29 @@ a.card-link { display: flex; flex-direction: column; gap: 16px; width: 100%; tra
 .track-item.playing .track-credits { color: var(--paper); }
 
 .track-controls { display: flex; align-items: center; gap: 12px; }
+/* --- FIX MOBILE TAP (Double Tap Issue) --- */
 .track-play-button {
-  display: none;
+  /* AVANT: display: none;  <-- C'est ça qui cause le double tap */
+  /* MAINTENANT : */
+  opacity: 0; /* Invisible mais présent physiquement */
+  
   background: none;
   border: none;
   padding: 0;
   margin: 0;
   font-size: 20px;
   color: var(--paper);
-  opacity: 0.8;
   transition: opacity 0.2s, transform 0.2s;
   cursor: pointer;
 }
+/* Au survol (PC) OU si la ligne est "playing", on affiche */
 .track-item:hover .track-play-button,
-.track-item.playing .track-play-button { display: block; }
-.track-play-button:hover { opacity: 1; transform: scale(1.1); }
+.track-item.playing .track-play-button {
+  /* AVANT: display: block; */
+  opacity: 0.8; /* On le rend visible */
+}
+
+.track-play-button:hover { opacity: 1 !important; transform: scale(1.1); }
 
 /* Grisé */
 .track-item[data-playable="false"] { cursor: default; }
@@ -401,48 +452,181 @@ a.card-link { display: flex; flex-direction: column; gap: 16px; width: 100%; tra
 .track-item[data-playable="false"] .track-number { color: var(--muted); font-weight: 400; }
 .track-item .badge-container { padding-right: 8px; }
 
-/* --- Player Dock & Modal --- */
+/* ======================= */
+/* =    PLAYER DOCK      = */
+/* ======================= */
 #player-dock {
-  position: fixed; left: 0; right: 0; bottom: 24px;
-  display: flex; justify-content: center; pointer-events: none;
-  opacity: 0; transform: translateY(40px);
-  transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+  position: fixed;
+  left: 0; right: 0; bottom: 24px;
+  display: flex;
+  justify-content: center;
   z-index: 100;
+
+  /* 1. MAGIE DU CLIC : Le conteneur transparent ne bloque JAMAIS les clics */
+  pointer-events: none;
+
+  /* 2. ÉTAT CACHÉ (Défaut) */
+  opacity: 0;
+  transform: translateY(40px);
+  visibility: hidden; /* Inaccessible au toucher */
+
+  /* Transition de FERMETURE (Quand on cache) */
+  /* On attend la fin de l'opacité (0.5s) avant de passer en visibility: hidden */
+  transition: 
+    opacity 0.5s var(--ease-out), 
+    transform 0.5s var(--ease-out),
+    visibility 0.5s step-end; 
 }
-#player-dock.active { opacity: 1; transform: translateY(0); }
+
+#player-dock.active {
+  /* 3. ÉTAT VISIBLE */
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible; /* Accessible au toucher */
+
+  /* Transition d'OUVERTURE (Quand on affiche) */
+  /* On passe en visibility: visible IMMÉDIATEMENT (0s) pour voir l'anim */
+  transition: 
+    opacity 0.5s var(--ease-out), 
+    transform 0.5s var(--ease-out),
+    visibility 0s step-start; 
+}
+
 .glass-panel {
+  /* 4. MAGIE DU CLIC : La carte, elle, DOIT être cliquable */
   pointer-events: auto;
+
+  /* Design (Restauration du background) */
   background: rgba(22, 22, 22, 0.85);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: var(--radius-lg);
-  width: 95%; max-width: 800px; overflow: hidden;
+  width: 95%;
+  max-width: 800px;
+  overflow: hidden;
 }
+
 .player-inner {
-  display: grid; grid-template-columns: minmax(0, 1fr) 40% 1fr;
-  align-items: center; padding: 16px 24px; column-gap: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40% 1fr;
+  align-items: center;
+  padding: 16px 24px;
+  column-gap: 24px;
 }
-.player-left { display: flex; gap: 16px; align-items: center; min-width: 0; justify-self: start; width: 100%; }
-#dock-cover { width: 48px; height: 48px; border-radius: 8px; background: #333; flex-shrink: 0; }
-.player-meta { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-#dock-title { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#dock-sub { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.player-controls { display: flex; flex-direction: column; align-items: center; gap: 12px; justify-self: stretch; min-width: 0; }
-.control-buttons { display: flex; align-items: center; gap: 24px; }
+
+.player-left {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  min-width: 0;
+  justify-self: start;
+  width: 100%;
+}
+
+#dock-cover {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: #333;
+  flex-shrink: 0;
+}
+
+.player-meta {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+#dock-title {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#dock-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  justify-self: stretch;
+  min-width: 0;
+}
+
+.control-buttons {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
 .player-controls button {
-  border: 0; background: transparent; color: var(--paper); cursor: pointer; padding: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  opacity: 0.8; transition: opacity 0.2s, transform 0.2s; font-size: 20px;
+  border: 0;
+  background: transparent;
+  color: var(--paper);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: opacity 0.2s, transform 0.2s;
+  font-size: 20px;
 }
+.player-controls button i { line-height: 0; }
 .player-controls button:hover { opacity: 1; transform: scale(1.1); }
+
 #btn-play { font-size: 25px; opacity: 1; }
-.scrubber { width: 100%; display: flex; align-items: center; gap: 12px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.scrubber {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 .range-wrapper { flex: 1; display: flex; align-items: center; }
-input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; outline: none; cursor: pointer; }
-input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; background: #fff; margin-top: -4px; cursor: pointer; transition: transform 0.1s; }
-input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: transparent; border-radius: 2px; }
-.player-right { display: flex; justify-content: flex-end; align-items: center; gap: 12px; justify-self: end; }
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 12px; width: 12px;
+  border-radius: 50%;
+  background: #fff;
+  margin-top: -4px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%; height: 4px;
+  background: transparent;
+  border-radius: 2px;
+}
+
+.player-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  justify-self: end;
+}
 
 /* ======================= */
 /* =     ADMIN & MODAL   = */
@@ -666,6 +850,10 @@ textarea.jsonedit {
   .modal-buttons .btn {
     flex: 1; /* Boutons pleine largeur, plus facile à toucher */
     padding: 14px;
+  }
+
+  .track-play-button {
+    opacity: 0; 
   }
 
 }

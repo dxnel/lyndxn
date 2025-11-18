@@ -23,7 +23,7 @@ const modalElements = {
     cancel: document.getElementById('modal-cancel'),
 };
 
-let state = { releases: [], artists: [], currentProject: null, trackIndex: 0, isPlaying: false, sort: 'date', view: 'grid', grouped: false, exclusiveOnly: false };
+let state = { releases: [], artists: [], currentProject: null, trackIndex: 0, isPlaying: false, sort: 'date', view: 'grid', grouped: false, exclusiveOnly: false, isAdmin: false };
 const audio = new Audio();
 let cssVars = { paper: '#ededed', track: '#444' };
 
@@ -37,14 +37,17 @@ const ICONS = {
     link: '<i class="fi fi-sr-square-up-right"></i>',
     explicit: '<i class="fi fi-sr-square-e"></i>',
     exclusive: '<i class="fi fi-sr-star"></i>',
+    lock: '<i class="fi fi-sr-lock"></i>',        // NOUVEAU
+    unlock: '<i class="fi fi-sr-unlock"></i>',    // NOUVEAU
     spotify: '<i class="fi fi-sr-play-alt"></i>', 
     globe: '<i class="fi fi-sr-globe"></i>',
-    instagram: '<i class="fi fi-sr-camera"></i>',       // Faute de logo marque
-    youtube: '<i class="fi fi-sr-play-alt"></i>',       // Play alternatif
-    soundcloud: '<i class="fi fi-sr-cloud"></i>',       // Nuage
-    spotify: '<i class="fi fi-sr-music-note"></i>',     // Note de musique
-    website: '<i class="fi fi-sr-globe"></i>',          // Globe
+    instagram: '<i class="fi fi-sr-camera"></i>',
+    youtube: '<i class="fi fi-sr-play-alt"></i>',
+    soundcloud: '<i class="fi fi-sr-cloud"></i>',
+    website: '<i class="fi fi-sr-globe"></i>',
 };
+
+const ADMIN_HASH = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"; // "1234"
 
 const esc = s => s ? s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) : '';
 const fmtTime = s => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
@@ -53,11 +56,40 @@ const capitalize = s => s && typeof s === 'string' ? s.charAt(0).toUpperCase() +
 const fmtCreds = c => Array.isArray(c) ? c.join(' & ') : (c || '');
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
+// Helper: Vérifie si un track est débloqué dans le localStorage
+function isTrackUnlocked(slug, trackNumber) {
+    const unlocked = JSON.parse(localStorage.getItem('unlocked_tracks') || '[]');
+    const id = `${slug}-${trackNumber}`;
+    return unlocked.includes(id);
+}
+
+// Helper: Sauvegarde le déblocage
+function unlockTrackLocal(slug, trackNumber) {
+    let unlocked = JSON.parse(localStorage.getItem('unlocked_tracks') || '[]');
+    const id = `${slug}-${trackNumber}`;
+    if (!unlocked.includes(id)) {
+        unlocked.push(id);
+        localStorage.setItem('unlocked_tracks', JSON.stringify(unlocked));
+    }
+}
+
 function createBadge(item, context = 'default', parent = null) {
     let h = '';
     if (item.explicit) h += `<div class="badge explicit" title="Explicit">${ICONS.explicit}</div>`;
+    
+    // Logique Badge Locked / Exclusive
     let showExcl = item.exclusive !== false;
     if (context === 'tracklist' && parent && parent.exclusive === true) showExcl = false;
+
+    // Si le morceau a un mot de passe et n'est PAS débloqué, on affiche le cadenas
+    if (context === 'tracklist' && item.password_hash && parent) {
+        const unlocked = isTrackUnlocked(parent.slug, item.track_number);
+        if (!unlocked) {
+             h += `<div class="badge locked" title="Protected">${ICONS.lock}</div>`;
+             showExcl = false; // On cache l'étoile si c'est locké (priorité au cadenas)
+        }
+    }
+
     if (showExcl) h += `<div class="badge exclusive" title="Exclusive">${ICONS.exclusive}</div>`;
     return h ? `<div class="badge-container">${h}</div>` : '';
 }
@@ -87,14 +119,31 @@ async function transition(fn) {
 }
 
 async function router() {
-    if (!state.releases.length) await loadData();
-    const hash = window.location.hash;
-    transition(() => {
-        if (hash.startsWith('#/release/')) renderRelease(decodeURIComponent(hash.split('/')[2]));
-        else if (hash.startsWith('#/artist/')) renderArtist(decodeURIComponent(hash.split('/')[2]));
-        else if (hash === '#/admin') renderAdmin();
-        else renderHome();
-    });
+  if (!state.releases.length) await loadData();
+  const hash = window.location.hash;
+  
+  if (hash === '#/admin' && !state.isAdmin) {
+      const pass = await showModal('Admin Access', 'Protected area. Enter password:', true, '••••');
+      if (!pass || !(await verifyPassword(pass, ADMIN_HASH))) {
+          if(pass) await showModal('Access Denied', 'Wrong password.');
+          window.location.hash = ''; 
+          return;
+      }
+      state.isAdmin = true;
+  }
+
+  transition(() => {
+      if (hash.startsWith('#/release/')) {
+          const slug = decodeURIComponent(hash.split('/')[2]);
+          renderRelease(slug);
+      }
+      else if (hash.startsWith('#/artist/')) {
+          const slug = decodeURIComponent(hash.split('/')[2]);
+          renderArtist(slug);
+      }
+      else if (hash === '#/admin') renderAdmin();
+      else renderHome();
+  });
 }
 
 function renderHome() {
@@ -107,7 +156,6 @@ function renderHome() {
     app.innerHTML = `
     <div class="section-header"><h2>Artists</h2></div>
     <div class="artists-section"><div class="artists-list">${artistsHtml}</div></div>
-    
     <div class="home-header">
         <div class="header-top-row">
             <h2>Releases</h2>
@@ -116,24 +164,20 @@ function renderHome() {
                 <button class="view-btn ${state.view === 'list' ? 'active' : ''}" data-v="list">${ICONS.list}</button>
             </div>
         </div>
-
         <div class="header-bottom-row">
             <div class="tabs" id="sort-tabs">
                 <button class="tab-btn active" data-s="date">Recent</button>
                 <button class="tab-btn" data-s="title">Name</button>
                 <button class="tab-btn" data-s="artist">Artist</button>
             </div>
-            
             <div class="control-group">
                 <button class="view-btn" id="grp-btn" title="Group">${ICONS.group}</button>
                 <button class="view-btn" id="excl-btn" title="Exclusive">${ICONS.exclusive}</button>
             </div>
         </div>
     </div>
-    
     <div class="grid-container" id="grid-ctn"></div>`;
 
-    // ... (Garde tes Event Listeners inchangés en dessous) ...
     document.getElementById('sort-tabs').onclick = e => {
         if (!e.target.closest('.tab-btn')) return;
         state.sort = e.target.closest('.tab-btn').dataset.s;
@@ -162,6 +206,7 @@ function renderHome() {
     grid.classList.add('grid-page-enter');
     setTimeout(() => grid.classList.remove('grid-page-enter'), 50);
 }
+
 function renderGrid() {
     const ctn = document.getElementById('grid-ctn');
     if (!ctn) return;
@@ -223,16 +268,12 @@ function renderArtist(slug) {
     const latest = rels[0];
     const releaseCount = rels.length;
     
-    // --- LOGIQUE SOCIALE DYNAMIQUE ---
     const links = artist.links || {};
     let socialBtns = '';
 
-    // 1. Bouton Principal "Listen Now" (clé "main")
     if (links.main) {
         socialBtns += `<a href="${links.main}" target="_blank" class="btn">${ICONS.link} Listen Now</a>`;
     }
-
-    // 2. Mapping des clés JSON vers les icônes
     const socialMap = {
         instagram: { icon: ICONS.instagram, title: 'Instagram' },
         youtube:   { icon: ICONS.youtube, title: 'YouTube' },
@@ -240,24 +281,20 @@ function renderArtist(slug) {
         soundcloud:{ icon: ICONS.soundcloud, title: 'SoundCloud' },
         website:   { icon: ICONS.website, title: 'Website' }
     };
-
-    // 3. Génération des petits boutons ronds
     Object.keys(links).forEach(key => {
-        // On ignore la clé "main" (déjà traitée) et les valeurs nulles
         if (key === 'main' || !links[key]) return;
-
         const map = socialMap[key];
         if (map) {
             socialBtns += `<a href="${links[key]}" target="_blank" class="btn secondary icon-only" title="${map.title}">${map.icon}</a>`;
         }
     });
-    // ----------------------------------
 
     let latestHtml = '';
     if (latest) {
         latestHtml = `
         <div class="latest-section">
-            <h2>Latest Release</h2> <div class="latest-card-wrapper">
+            <h3>Latest Release</h3>
+            <div class="latest-card-wrapper">
                 <div class="card">
                     <a href="#/release/${latest.slug}" class="card-link">
                         <div class="card-image-wrap"><img src="${latest.cover}"></div>
@@ -287,6 +324,7 @@ function renderArtist(slug) {
     <div class="artist-profile-header">
         <img src="${artist.pfp}" alt="${artist.name}" class="artist-pfp-large">
         <div class="artist-info">
+            <span class="artist-badge">${releaseCount} Releases</span>
             <h1 class="artist-name-large">${esc(artist.name)}</h1>
             <p class="artist-bio">${esc(artist.bio || 'No biography available.')}</p>
             <div class="artist-actions">${socialBtns}</div>
@@ -297,7 +335,32 @@ function renderArtist(slug) {
     <div class="grid">${discogHtml}</div>`;
 }
 
-
+// --- COLOR EXTRACTION (Smart) ---
+async function getDominantColor(imageUrl) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = imageUrl + (imageUrl.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 50; canvas.height = 50;
+            ctx.drawImage(img, 0, 0, 50, 50);
+            let data;
+            try { data = ctx.getImageData(0, 0, 50, 50).data; } catch (e) { return resolve('rgba(40, 40, 40, 0.5)'); }
+            let rTotal = 0, gTotal = 0, bTotal = 0, count = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i+1], b = data[i+2];
+                const max = Math.max(r, g, b), min = Math.min(r, g, b);
+                const sat = max - min, bri = (max + min) / 2;
+                if (sat > 20 && bri > 20 && bri < 235) { rTotal+=r; gTotal+=g; bTotal+=b; count++; }
+            }
+            if (count > 0) resolve(`rgb(${Math.round(rTotal/count)}, ${Math.round(gTotal/count)}, ${Math.round(bTotal/count)})`);
+            else resolve('rgba(100, 100, 100, 0.5)'); 
+        };
+        img.onerror = () => resolve('rgba(40, 40, 40, 0.5)');
+    });
+}
 
 function renderRelease(slug) {
     const p = state.releases.find(x => x.slug === slug);
@@ -309,11 +372,19 @@ function renderRelease(slug) {
     const desc = esc(p.description).replace(/\n/g, '<br>');
     const firstPlayable = p.tracks.find(t => t.exclusive !== false && t.audio);
     
+    // Logic Bouton principal
     let buttonHtml = '';
     if (p.exclusive === true) {
         if (firstPlayable) {
-            buttonHtml = `<button class="btn" id="play-rel-btn">${ICONS.play} Play</button>
-            ${p.type === 'single' ? `<a class="btn secondary" href="${firstPlayable.audio}" download="${p.slug}.mp3">Download</a>` : ''}`;
+            // Check si le premier morceau est locké
+            const isFirstLocked = firstPlayable.password_hash && !isTrackUnlocked(p.slug, firstPlayable.track_number);
+            
+            if(isFirstLocked) {
+                buttonHtml = `<button class="btn" disabled>${ICONS.lock} Protected</button>`;
+            } else {
+                buttonHtml = `<button class="btn" id="play-rel-btn">${ICONS.play} Play</button>
+                ${p.type === 'single' ? `<a class="btn secondary" href="${firstPlayable.audio}" download="${p.slug}.mp3">Download</a>` : ''}`;
+            }
         } else {
             buttonHtml = `<button class="btn" disabled>Not Available</button>`;
         }
@@ -323,19 +394,37 @@ function renderRelease(slug) {
     }
 
     const tracksHtml = p.tracks.map((t, i) => {
-        const isPlayable = !!(t.exclusive !== false && t.audio);
-        const trackButton = isPlayable
-          ? `<button class="track-play-button">${ICONS.play}</button>`
-          : `<a href="${t.stream_url || '#'}" target="_blank" class="track-play-button">${ICONS.link}</a>`;
+        const hasPassword = !!t.password_hash;
+        const isUnlocked = isTrackUnlocked(p.slug, t.track_number);
+        
+        // Un morceau est "Locked" si il a un mdp ET qu'il n'est pas débloqué
+        const isLocked = hasPassword && !isUnlocked;
+        
+        // Un morceau est jouable si : Exclusif + Audio existe + PAS locké
+        const isPlayable = (t.exclusive !== false && t.audio) && !isLocked;
+
+        // Quel bouton afficher ?
+        let actionButton = '';
+        if (isLocked) {
+            actionButton = `<button class="track-unlock-button" title="Unlock">${ICONS.lock}</button>`;
+        } else if (t.exclusive !== false && t.audio) {
+            actionButton = `<button class="track-play-button">${ICONS.play}</button>`;
+        } else {
+            actionButton = `<a href="${t.stream_url || '#'}" target="_blank" class="track-play-button">${ICONS.link}</a>`;
+        }
+
+        // Classes CSS
+        let itemClasses = 'track-item';
+        if(isLocked) itemClasses += ' locked';
 
         return `
-        <div class="track-item" data-idx="${i}" data-playable="${isPlayable}">
+        <div class="${itemClasses}" data-idx="${i}" data-locked="${isLocked}" data-playable="${isPlayable}">
             <div class="track-number">${t.track_number}</div>
             <div class="track-meta">
                 <div class="track-title"><span>${esc(t.title)}</span>${createBadge(t, 'tracklist', p)}</div>
                 <div class="track-credits">${esc(fmtCreds(t.credits))}</div>
             </div>
-            <div class="track-controls">${trackButton}</div>
+            <div class="track-controls">${actionButton}</div>
         </div>`;
     }).join('');
 
@@ -371,25 +460,60 @@ function renderRelease(slug) {
 
     app.innerHTML = html;
 
-    if (firstPlayable && p.exclusive === true) {
-        document.getElementById('play-rel-btn').onclick = () => playTrack(firstPlayable, p);
+    // Listener Bouton Principal (Play Album)
+    const playBtn = document.getElementById('play-rel-btn');
+    if (playBtn) {
+        playBtn.onclick = () => {
+            // On joue le premier morceau qui est débloqué
+            const firstVal = p.tracks.find(t => (t.exclusive!==false && t.audio) && (!t.password_hash || isTrackUnlocked(p.slug, t.track_number)));
+            if(firstVal) playTrack(firstVal, p);
+        };
     }
-    document.getElementById('track-list').addEventListener('click', (e) => {
+
+    // Listener Tracklist (Play & Unlock)
+    document.getElementById('track-list').addEventListener('click', async (e) => {
+        // Gestion Unlock Button
+        const unlockBtn = e.target.closest('.track-unlock-button');
+        if (unlockBtn) {
+            const item = unlockBtn.closest('.track-item');
+            const t = p.tracks[item.dataset.idx];
+            
+            // Demande mot de passe pour le morceau
+            const pass = await showModal('Protected Track', `Enter password for <b>"${t.title}"</b>:`, true, '••••');
+            if (pass) {
+                await wait(300); // UX Delay
+                if (await verifyPassword(pass, t.password_hash)) {
+                    // SUCCÈS : On débloque
+                    unlockTrackLocal(p.slug, t.track_number);
+                    await showModal('Unlocked', 'Track unlocked successfully.');
+                    renderRelease(slug); // Re-render pour enlever le cadenas
+                } else {
+                    await showModal('Error', 'Incorrect password.');
+                }
+            }
+            return;
+        }
+
+        // Gestion Play Normal
         const item = e.target.closest('.track-item');
-        if (item && item.dataset.playable === 'true') playTrack(p.tracks[item.dataset.idx], p);
+        if (item && item.dataset.playable === 'true') {
+            playTrack(p.tracks[item.dataset.idx], p);
+        }
     });
+    
     updateUIState();
 }
 
 // --- SECURITY & ADMIN ---
-async function verifyPassword(input) {
-    if (!input) return false;
+// Mise à jour: accepte un hash cible (targetHash)
+async function verifyPassword(input, targetHash) {
+    if (!input || !targetHash) return false;
     const encoder = new TextEncoder();
     const data = encoder.encode(input);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    return hashHex === "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
+    return hashHex === targetHash;
 }
 
 let adminCurrentView = 'releases';
@@ -397,7 +521,85 @@ let adminCurrentView = 'releases';
 function renderAdmin() {
     const getCurrentJson = () => JSON.stringify(adminCurrentView === 'releases' ? state.releases : state.artists, null, 2);
     const getRepoUrl = () => `https://github.com/dxnel/lyndxn/blob/main/${adminCurrentView}.json`;
+    
+    // Compteur de morceaux débloqués (LocalStorage)
+    const localUnlockedIds = JSON.parse(localStorage.getItem('unlocked_tracks') || '[]');
 
+    // --- GÉNÉRATION DE LA LISTE DES PROTECTED TRACKS ---
+    let protectedListHtml = '';
+    
+    if (adminCurrentView === 'releases') {
+        let protectedTracks = [];
+        
+        // On scanne tout le JSON pour trouver les passwords
+        state.releases.forEach(r => {
+            if (r.tracks) {
+                r.tracks.forEach(t => {
+                    if (t.password_hash) {
+                        const id = `${r.slug}-${t.track_number}`;
+                        const isUnlocked = localUnlockedIds.includes(id);
+                        protectedTracks.push({
+                            title: t.title,
+                            artist: fmtCreds(t.credits || r.credits), // AJOUT : Nom de l'artiste
+                            release: r.title,
+                            hash: t.password_hash,
+                            unlocked: isUnlocked,
+                            trackNum: t.track_number
+                        });
+                    }
+                });
+            }
+        });
+
+        if (protectedTracks.length > 0) {
+            const rows = protectedTracks.map(item => `
+                <div style="display: grid; grid-template-columns: 30px 1.5fr 1fr 1fr 80px; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; align-items: center;">
+                    <div style="color: var(--muted);">${item.trackNum}</div>
+                    
+                    <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${esc(item.title)} <span style="color:var(--muted); font-size:11px;">(${esc(item.release)})</span>
+                    </div>
+
+                    <div style="color: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${esc(item.artist)}
+                    </div>
+
+                    <div style="font-family: monospace; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.hash}">
+                        ${item.hash.substring(0, 8)}...
+                    </div>
+
+                    <div style="text-align: right;">
+                        ${item.unlocked 
+                            ? `<span style="color: #4caf50; background: rgba(76, 175, 80, 0.1); padding: 2px 6px; border-radius: 4px;">Unlocked</span>` 
+                            : `<span style="color: var(--muted); background: rgba(255, 255, 255, 0.05); padding: 2px 6px; border-radius: 4px;">Locked</span>`}
+                    </div>
+                </div>
+            `).join('');
+
+            protectedListHtml = `
+            <div style="margin-bottom: 24px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                    <h3 style="margin:0; font-size: 14px; font-weight: 600;">Protected Tracks Manager</h3>
+                    <button class="btn secondary" id="reset-unlocks" style="font-size:10px; padding:4px 10px; height: auto;">Reset Local Storage</button>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 30px 1.5fr 1fr 1fr 80px; gap: 10px; font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 8px;">
+                    <div>#</div>
+                    <div>Track</div>
+                    <div>Artist</div> <div>Hash</div>
+                    <div style="text-align: right;">Status</div>
+                </div>
+                
+                <div style="max-height: 150px; overflow-y: auto;">
+                    ${rows}
+                </div>
+            </div>`;
+        } else {
+            protectedListHtml = `<div style="margin-bottom: 20px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 13px; color: var(--muted); text-align: center;">No protected tracks found in database.</div>`;
+        }
+    }
+
+    // --- RENDER GLOBAL ---
     app.innerHTML = `
     <div class="page-header"><a href="#" class="back-link">← Back</a></div>
     <div class="section-header" id="database-manager-label"><h2>Database Manager</h2></div>
@@ -411,9 +613,12 @@ function renderAdmin() {
                 ${ICONS.globe} View on GitHub
             </a>
         </div>
+        
+        ${adminCurrentView === 'releases' ? protectedListHtml : ''}
+
         <textarea class="jsonedit" id="je">${esc(getCurrentJson())}</textarea>
         <div class="modal-buttons" style="margin-top: 20px;">
-            <button class="btn secondary" id="dl-json">Download</button>
+            <button class="btn secondary" id="dl-json">Download ${capitalize(adminCurrentView)}.json</button>
             <button class="btn" id="save-json">Apply</button>
         </div>
     </div>`;
@@ -421,6 +626,16 @@ function renderAdmin() {
     const updateView = (view) => { adminCurrentView = view; renderAdmin(); };
     document.getElementById('tab-releases').onclick = () => updateView('releases');
     document.getElementById('tab-artists').onclick = () => updateView('artists');
+
+    // Reset Local Storage (Si le bouton existe, donc si on est sur Releases)
+    const resetBtn = document.getElementById('reset-unlocks');
+    if (resetBtn) {
+        resetBtn.onclick = async () => {
+            localStorage.removeItem('unlocked_tracks');
+            await showModal('Reset', 'All saved passwords/unlocks have been cleared from this device.');
+            renderAdmin(); // Rafraîchir la liste
+        };
+    }
 
     document.getElementById('dl-json').onclick = () => {
         const content = document.getElementById('je').value;
@@ -436,6 +651,7 @@ function renderAdmin() {
             if(adminCurrentView === 'releases') state.releases = parsed;
             else state.artists = parsed;
             await showModal('Success', `Applied to <b>${adminCurrentView}</b> in memory.`);
+            renderAdmin(); // Rafraîchir la vue
         } catch (e) { await showModal('JSON Error', e.message); }
     };
 }
@@ -478,6 +694,13 @@ function togglePlay() {
     updateUIState();
 }
 
+function closePlayer() {
+    audio.pause();
+    state.isPlaying = false;
+    playerElements.dock.classList.remove('active');
+    updateUIState(); 
+}
+
 function updateUIState() {
     const icon = state.isPlaying ? ICONS.pause : ICONS.play;
     playerElements.playBtn.innerHTML = icon;
@@ -487,12 +710,13 @@ function updateUIState() {
     if (state.currentProject && window.location.hash.includes(state.currentProject.slug)) {
         document.querySelectorAll('.track-item').forEach((el, i) => {
             const btn = el.querySelector('.track-play-button');
+            // Si c'est pas le bon morceau, reset icone. Si c'est le bon, icone play/pause
             if (i === state.trackIndex) {
                 el.classList.add('playing');
-                if (btn) btn.innerHTML = state.isPlaying ? ICONS.pause : ICONS.play;
+                if (btn && !el.classList.contains('locked')) btn.innerHTML = state.isPlaying ? ICONS.pause : ICONS.play;
             } else {
                 el.classList.remove('playing');
-                if (btn) btn.innerHTML = ICONS.play;
+                if (btn && !el.classList.contains('locked')) btn.innerHTML = ICONS.play;
             }
         });
     }
@@ -503,16 +727,22 @@ function nextTrack(dir = 1) {
     let idx = state.trackIndex + dir;
     while (idx >= 0 && idx < state.currentProject.tracks.length) {
         const t = state.currentProject.tracks[idx];
-        if ((t.exclusive !== false && t.audio)) { playTrack(t, state.currentProject); return; }
+        // Check unlocked status
+        const unlocked = !t.password_hash || isTrackUnlocked(state.currentProject.slug, t.track_number);
+        if ((t.exclusive !== false && t.audio) && unlocked) { 
+            playTrack(t, state.currentProject); 
+            return; 
+        }
         idx += dir;
     }
+    if (dir === 1) closePlayer();
 }
 
 function updateSeekBg(pct) {
     playerElements.seek.style.background = `linear-gradient(to right, ${cssVars.paper} ${pct}%, ${cssVars.track} ${pct}%)`;
 }
 
-// --- MODAL ---
+// --- MODAL SYSTEM ---
 function showModal(title, text, input = false, placeholder = '') {
     modalElements.title.textContent = title;
     modalElements.text.innerHTML = text;
@@ -551,15 +781,21 @@ function showModal(title, text, input = false, placeholder = '') {
     });
 }
 
-
-
 // --- INIT LISTENERS ---
 document.getElementById('admin-icon').onclick = async () => {
+    if (state.isAdmin) {
+        window.location.hash = '#/admin';
+        return;
+    }
     const pass = await showModal('Admin Access', 'Enter secured password:', true, '••••');
     if (pass === null) return;
     await wait(200);
-    if (await verifyPassword(pass)) window.location.hash = '#/admin';
-    else await showModal('Access Denied', 'The password you entered is incorrect.');
+    if (await verifyPassword(pass, ADMIN_HASH)) {
+        state.isAdmin = true; 
+        window.location.hash = '#/admin';
+    } else {
+        await showModal('Access Denied', 'The password you entered is incorrect.');
+    }
 };
 
 // --- INIT ---
