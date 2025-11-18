@@ -23,6 +23,7 @@ const modalOverlay = document.getElementById('modal-overlay'),
       modalCancel = document.getElementById('modal-cancel');
 
 let releases = [], audio = new Audio(), isPlaying = false;
+let artists = []; 
 let currentSort = 'date';
 let currentView = 'grid';
 let isGrouped = false;
@@ -126,6 +127,17 @@ async function loadReleases() {
   }
 }
 
+async function loadArtists() {
+  try {
+    // Remplace par ton URL réelle si c'est sur GitHub, sinon chemin local
+    const res = await fetch('https://raw.githubusercontent.com/dxnel/lyndxn/refs/heads/main/artists.json?t=' + Date.now());
+    if (!res.ok) throw new Error(res.status);
+    artists = await res.json();
+  } catch (e) {
+    console.error("Erreur loading artists:", e);
+  }
+}
+
 //--- TRANSITION SYSTEM ---
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -143,6 +155,7 @@ async function transitionTo(renderFn) {
 //--- ROUTER ---
 async function router() {
   if (!releases.length) await loadReleases();
+  if (!artists.length) await loadArtists(); 
   
   const hash = window.location.hash;
   
@@ -152,32 +165,63 @@ async function router() {
           const slug = decodeURIComponent(hash.split('/')[2]);
           renderRelease(slug);
       }
+      // --- NOUVELLE ROUTE ---
+      else if (hash.startsWith('#/artist/')) {
+          const slug = decodeURIComponent(hash.split('/')[2]);
+          renderArtist(slug);
+      }
       else if (hash === '#/admin') renderAdmin();
       else renderHome();
   });
 }
 
-//--- HOME & GRID ---
 async function renderHome() {
-  app.innerHTML = `
-    <div class="home-header">
-      <h2>Releases</h2>
-      <div class="library-controls" id="library-controls">
-        <div class="control-group">
-          <button class="view-btn" data-action="toggle-group" title="Group by Artist" id="group-toggle-btn">${SVG_GROUP}</button>
-          <button class="view-btn" data-action="toggle-exclusive" title="Show Exclusive Only" id="exclusive-toggle-btn">${ICON_EXCLUSIVE}</button>
-        </div>
-        <div class="control-group" id="view-toggle">
-          <button class="view-btn ${currentView === 'grid' ? 'active' : ''}" data-action="toggle-view" data-view="grid" title="Grid View">${SVG_GRID}</button>
-          <button class="view-btn ${currentView === 'list' ? 'active' : ''}" data-action="toggle-view" data-view="list" title="List View">${SVG_LIST}</button>
-        </div>
+  // Générer le HTML des artistes
+  const artistsHtml = artists.map(a => `
+    <a href="#/artist/${a.slug}" class="artist-circle-item">
+      <div class="artist-img-wrap">
+        <img src="${a.pfp}" alt="${a.name}" loading="lazy">
       </div>
-      <div class="tabs" id="sort-tabs">
-        <button class="tab-btn active" data-sort="date">Recent</button>
-        <button class="tab-btn" data-sort="title">Name (A-Z)</button>
-        <button class="tab-btn" data-sort="artist">Artist (A-Z)</button>
+      <span class="artist-name">${escapeHtml(a.name)}</span>
+    </a>
+  `).join('');
+
+  app.innerHTML = `
+    <div class="section-header">
+      <h2>Artists</h2>
+    </div>
+    
+    <div class="artists-section">
+       <div class="artists-list">
+         ${artistsHtml}
+       </div>
+    </div>
+
+    <div class="home-header">
+      <div class="header-top-row">
+          <h2>Releases</h2>
+          
+          <div class="library-controls" id="library-controls">
+            <div class="control-group">
+              <button class="view-btn" data-action="toggle-group" title="Group by Artist" id="group-toggle-btn">${SVG_GROUP}</button>
+              <button class="view-btn" data-action="toggle-exclusive" title="Show Exclusive Only" id="exclusive-toggle-btn">${ICON_EXCLUSIVE}</button>
+            </div>
+            <div class="control-group" id="view-toggle">
+              <button class="view-btn ${currentView === 'grid' ? 'active' : ''}" data-action="toggle-view" data-view="grid" title="Grid View">${SVG_GRID}</button>
+              <button class="view-btn ${currentView === 'list' ? 'active' : ''}" data-action="toggle-view" data-view="list" title="List View">${SVG_LIST}</button>
+            </div>
+          </div>
+      </div>
+
+      <div class="header-bottom-row">
+          <div class="tabs" id="sort-tabs">
+            <button class="tab-btn active" data-sort="date">Recent</button>
+            <button class="tab-btn" data-sort="title">Name (A-Z)</button>
+            <button class="tab-btn" data-sort="artist">Artist (A-Z)</button>
+          </div>
       </div>
     </div>
+
     <div class="grid-container" id="grid-container">
     </div>`;
     
@@ -527,6 +571,71 @@ function renderRelease(slug) {
   });
 }
 
+function renderArtist(slug) {
+  const artist = artists.find(a => a.slug === slug);
+  if (!artist) { app.innerHTML = `<p>Artist not found.</p>`; return; }
+
+  // 1. Trouver la dernière release
+  const artistReleases = releases.filter(r => r.credits.includes(artist.slug));
+  artistReleases.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const latestRelease = artistReleases[0];
+
+  // 2. Générer le HTML de la carte (Structure identique à la grille)
+  let latestReleaseHtml = '';
+  if (latestRelease) {
+      latestReleaseHtml = `
+        <div class="latest-release-wrapper">
+            <h3 class="section-title">Latest Release</h3>
+            
+            <div class="artist-latest-card-container"> 
+                <div class="card">
+                    <a href="#/release/${latestRelease.slug}" class="card-link">
+                        <div class="card-image-wrap">
+                            <img src="${latestRelease.cover}" alt="${latestRelease.title}">
+                        </div>
+                        <div class="card-text">
+                            <div class="card-title-row">
+                                <div class="title">${escapeHtml(latestRelease.title)}</div>
+                                ${createBadgeHtml(latestRelease)}
+                            </div>
+                            <div class="meta">
+                                <span>${new Date(latestRelease.date).getFullYear()}</span>
+                                <span class="meta-dot">●</span>
+                                <span>${capitalize(latestRelease.type)}</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+      `;
+  } else {
+      latestReleaseHtml = `<p style="color:var(--muted)">No releases found for this artist.</p>`;
+  }
+
+  const html = `
+  <div class="page-header">
+    <a href="#" class="back-link">← Back to home</a>
+  </div>
+
+  <section class="artist-profile">
+    <div class="artist-header">
+        <img src="${artist.pfp || './tracks/covers/placeholder-cover.png'}" alt="${artist.name}" class="artist-pfp-large">
+        <h1 class="artist-name-large">${escapeHtml(artist.name)}</h1>
+    </div>
+    
+    <div class="artist-bio">
+        <p>${escapeHtml(artist.bio || 'No biography available.')}</p>
+    </div>
+
+    <div class="artist-discography">
+        ${latestReleaseHtml}
+    </div>
+  </section>
+  `;
+
+  app.innerHTML = html;
+}
 //--- FONCTIONS MODAL ---
 // ... (reste du code inchangé) ...
 
