@@ -132,6 +132,9 @@ i[class^="fi"] {
     text-overflow: ellipsis;
 }
 
+h2{
+  font-size:24px
+}
 /* --- Home / Grid --- */
 .section-header, .home-header { padding-top: 40px; margin-bottom: 24px; }
 .section-header h2 { margin: 0; font-size: 24px; letter-spacing: -0.5px; font-weight: 700; color: var(--paper); }
@@ -227,7 +230,7 @@ a.card-link { display: flex; flex-direction: column; gap: 16px; width: 100%; tra
 .artist-bio { color: var(--muted); line-height: 1.6; max-width: 600px; font-size: 15px; margin: 0; }
 .artist-actions { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
 .latest-section { margin-bottom: 0px; }
-.latest-section h3 { font-size: 20px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px; color: var(--paper); }
+.latest-section h3 { font-size: 20px; font-weight: 600; padding-bottom: 16px; margin-bottom: 24px; color: var(--paper); }
 .latest-card-wrapper { max-width: 100%; width:220px }
 
 /* ======================= */
@@ -488,27 +491,7 @@ textarea.jsonedit {
   padding-top: 0;
 }
 
-/* --- Release Ambient Glow (FINAL) --- */
-.release-bg-glow {
-  position: fixed; /* Reste fixe même quand on scroll */
-  top: 0;
-  left: 50%; /* Centre technique */
-  transform: translateX(-50%); /* Centre réel */
-  width: 100vw; /* Toute la largeur fenêtre */
-  height: 100vh; /* Toute la hauteur */
-  z-index: -10;
-  pointer-events: none;
-  
-  opacity: 0;
-  transition: opacity 1.5s ease;
 
-  /* Pas de mix-blend-mode pour voir la vraie couleur */
-  background: radial-gradient(
-    circle at 50% 40%, /* Spot centré légèrement vers le haut */
-    var(--glow-color, rgba(40,40,40,0.3)) 0%, 
-    transparent 70%
-  );
-}
 
 /* Important : Assure-toi que le conteneur principal ne cache pas le background */
 .container {
@@ -652,19 +635,4 @@ textarea.jsonedit {
     padding: 14px;
   }
 
-  /* Sur PC : Spot décalé à gauche */
-@media(min-width: 894px) {
-  .release-bg-glow {
-    background: radial-gradient(
-      circle at 25% 50%, 
-      var(--glow-color, rgba(40,40,40,0.3)) 0%, 
-      transparent 60%
-    );
-    opacity: 0.7; /* Un peu transparent pour pas tuer les yeux */
-  }
-  /* Force l'opacité quand JS l'active */
-  .release-bg-glow[style*="opacity: 1"] {
-      opacity: 0.75 !important; 
-  }
-}
 }

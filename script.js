@@ -38,7 +38,12 @@ const ICONS = {
     explicit: '<i class="fi fi-sr-square-e"></i>',
     exclusive: '<i class="fi fi-sr-star"></i>',
     spotify: '<i class="fi fi-sr-play-alt"></i>', 
-    globe: '<i class="fi fi-sr-globe"></i>'
+    globe: '<i class="fi fi-sr-globe"></i>',
+    instagram: '<i class="fi fi-sr-camera"></i>',       // Faute de logo marque
+    youtube: '<i class="fi fi-sr-play-alt"></i>',       // Play alternatif
+    soundcloud: '<i class="fi fi-sr-cloud"></i>',       // Nuage
+    spotify: '<i class="fi fi-sr-music-note"></i>',     // Note de musique
+    website: '<i class="fi fi-sr-globe"></i>',          // Globe
 };
 
 const esc = s => s ? s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) : '';
@@ -215,19 +220,41 @@ function renderArtist(slug) {
     const latest = rels[0];
     const releaseCount = rels.length;
     
-    const linktreeUrl = artist.linktree || `https://linktr.ee/${artist.slug}`; 
-    const socialBtns = `
-        <a href="${linktreeUrl}" target="_blank" class="btn">${ICONS.link} Listen Now</a>
-        <a href="#" class="btn secondary icon-only" title="Website">${ICONS.globe}</a>
-        <a href="#" class="btn secondary icon-only" title="Spotify">${ICONS.spotify}</a>
-    `;
+    // --- LOGIQUE SOCIALE DYNAMIQUE ---
+    const links = artist.links || {};
+    let socialBtns = '';
+
+    // 1. Bouton Principal "Listen Now" (clé "main")
+    if (links.main) {
+        socialBtns += `<a href="${links.main}" target="_blank" class="btn">${ICONS.link} Listen Now</a>`;
+    }
+
+    // 2. Mapping des clés JSON vers les icônes
+    const socialMap = {
+        instagram: { icon: ICONS.instagram, title: 'Instagram' },
+        youtube:   { icon: ICONS.youtube, title: 'YouTube' },
+        spotify:   { icon: ICONS.spotify, title: 'Spotify' },
+        soundcloud:{ icon: ICONS.soundcloud, title: 'SoundCloud' },
+        website:   { icon: ICONS.website, title: 'Website' }
+    };
+
+    // 3. Génération des petits boutons ronds
+    Object.keys(links).forEach(key => {
+        // On ignore la clé "main" (déjà traitée) et les valeurs nulles
+        if (key === 'main' || !links[key]) return;
+
+        const map = socialMap[key];
+        if (map) {
+            socialBtns += `<a href="${links[key]}" target="_blank" class="btn secondary icon-only" title="${map.title}">${map.icon}</a>`;
+        }
+    });
+    // ----------------------------------
 
     let latestHtml = '';
     if (latest) {
         latestHtml = `
         <div class="latest-section">
-            <h3>Latest Release</h3>
-            <div class="latest-card-wrapper">
+            <h2>Latest Release</h2> <div class="latest-card-wrapper">
                 <div class="card">
                     <a href="#/release/${latest.slug}" class="card-link">
                         <div class="card-image-wrap"><img src="${latest.cover}"></div>
@@ -257,7 +284,6 @@ function renderArtist(slug) {
     <div class="artist-profile-header">
         <img src="${artist.pfp}" alt="${artist.name}" class="artist-pfp-large">
         <div class="artist-info">
-            <span class="artist-badge">${releaseCount} Releases</span>
             <h1 class="artist-name-large">${esc(artist.name)}</h1>
             <p class="artist-bio">${esc(artist.bio || 'No biography available.')}</p>
             <div class="artist-actions">${socialBtns}</div>
@@ -274,14 +300,7 @@ function renderRelease(slug) {
     const p = state.releases.find(x => x.slug === slug);
     if (!p) return app.innerHTML = `<p>Release not found.</p>`;
 
-    // FIX: Rétablissement du calcul de la lueur
-    getDominantColor(p.cover).then(color => {
-        const glow = document.getElementById('release-glow');
-        if(glow) {
-            glow.style.setProperty('--glow-color', color);
-            glow.style.opacity = '1';
-        }
-    });
+
     
     const mainCredits = fmtCreds(p.credits);
     const desc = esc(p.description).replace(/\n/g, '<br>');
@@ -324,7 +343,6 @@ function renderRelease(slug) {
     if (totalMinutes > 0) trackListInfo += `, ${totalMinutes} ${totalMinutes > 1 ? 'minutes' : 'minute'}`;
 
     const html = `
-    <div id="release-glow" class="release-bg-glow"></div>
     <div class="page-header"><a href="#" class="back-link">← Back to releases</a></div>
     <section class="release-hero">
         <img src="${p.cover}" alt="${p.title}">
@@ -392,8 +410,8 @@ function renderAdmin() {
         </div>
         <textarea class="jsonedit" id="je">${esc(getCurrentJson())}</textarea>
         <div class="modal-buttons" style="margin-top: 20px;">
-            <button class="btn secondary" id="dl-json">Download ${capitalize(adminCurrentView)}.json</button>
-            <button class="btn" id="save-json">Test Apply (Memory)</button>
+            <button class="btn secondary" id="dl-json">Download</button>
+            <button class="btn" id="save-json">Apply</button>
         </div>
     </div>`;
 
@@ -530,79 +548,7 @@ function showModal(title, text, input = false, placeholder = '') {
     });
 }
 
-// --- COLOR EXTRACTION (SMART SAMPLING) ---
-async function getDominantColor(imageUrl) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = "Anonymous";
-        // Cache-buster pour éviter les soucis de sécurité navigateur
-        img.src = imageUrl + (imageUrl.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
 
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // On analyse une version réduite (50x50) pour la performance
-            // C'est suffisant pour avoir 2500 points de comparaison
-            canvas.width = 50;
-            canvas.height = 50;
-            ctx.drawImage(img, 0, 0, 50, 50);
-
-            let data;
-            try {
-                data = ctx.getImageData(0, 0, 50, 50).data;
-            } catch (e) {
-                console.warn("CORS Error: Impossible d'analyser les couleurs de l'image.");
-                return resolve('rgba(40, 40, 40, 0.5)'); // Fallback propre
-            }
-
-            let rTotal = 0, gTotal = 0, bTotal = 0, count = 0;
-
-            for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-                // alpha = data[i + 3];
-
-                // Calculs simples de luminosité et saturation
-                const max = Math.max(r, g, b);
-                const min = Math.min(r, g, b);
-                const saturation = max - min; // Écart entre la couleur la plus forte et la plus faible
-                const brightness = (max + min) / 2;
-
-                // --- LE FILTRE MAGIQUE ---
-                // 1. On ignore ce qui est trop sombre (Noir/Fond) -> brightness < 20
-                // 2. On ignore ce qui est trop clair (Blanc/Texte) -> brightness > 230
-                // 3. On ignore ce qui est gris (Faible saturation) -> saturation < 20
-                if (saturation > 20 && brightness > 20 && brightness < 235) {
-                    rTotal += r;
-                    gTotal += g;
-                    bTotal += b;
-                    count++;
-                }
-            }
-
-            if (count > 0) {
-                // Moyenne des pixels "colorés" uniquement
-                const r = Math.round(rTotal / count);
-                const g = Math.round(gTotal / count);
-                const b = Math.round(bTotal / count);
-                
-                // Petit boost final pour que ça pète à l'écran
-                // On garde la teinte mais on s'assure que ce n'est pas trop sombre
-                const vibrantColor = `rgb(${r}, ${g}, ${b})`;
-                console.log("Smart Color Found:", vibrantColor);
-                resolve(vibrantColor);
-            } else {
-                // Si l'image est vraiment N&B, on renvoie du blanc cassé ou une couleur par défaut
-                console.log("Image appears B&W");
-                resolve('rgba(100, 100, 100, 0.5)'); 
-            }
-        };
-
-        img.onerror = () => resolve('rgba(40, 40, 40, 0.5)');
-    });
-}
 
 // --- INIT LISTENERS ---
 document.getElementById('admin-icon').onclick = async () => {
