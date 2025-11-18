@@ -106,15 +106,25 @@ async function loadData() {
     } catch (e) { console.error(e); app.innerHTML = `<p>Error loading data.</p>`; }
 }
 
-// --- ROUTER & TRANSITIONS ---
 async function transition(fn) {
+    // 1. On commence l'animation de sortie (fade out)
     app.classList.add('page-exit');
     await wait(300);
+    
+    // 2. On injecte le nouveau contenu
     fn();
-    window.scrollTo(0, 0);
+    
+    // --- FIX SCROLL RADICAL ---
+    // On force le navigateur à remonter tout en haut INSTANTANÉMENT
+    // avant d'afficher la nouvelle page.
+    window.scrollTo({ top: 0, behavior: 'instant' }); 
+    document.body.scrollTop = 0; // Sécurité pour Safari Mobile
+    document.documentElement.scrollTop = 0; // Sécurité pour Chrome/Firefox
+    
+    // 3. On lance l'animation d'entrée (fade in)
     app.classList.remove('page-exit');
     app.classList.add('page-enter');
-    void app.offsetWidth;
+    void app.offsetWidth; // Force le navigateur à calculer le CSS (reflow)
     app.classList.remove('page-enter');
 }
 
