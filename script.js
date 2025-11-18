@@ -34,7 +34,7 @@ const ICONS = {
     grid: '<i class="fi fi-sr-apps"></i>',
     list: '<i class="fi fi-sr-list"></i>',
     group: '<i class="fi fi-sr-user"></i>',
-    link: '<i class="fi fi-sr-square-up-right"></i>', // Used for "Listen Now"
+    link: '<i class="fi fi-sr-square-up-right"></i>',
     explicit: '<i class="fi fi-sr-square-e"></i>',
     exclusive: '<i class="fi fi-sr-star"></i>',
     spotify: '<i class="fi fi-sr-play-alt"></i>', 
@@ -226,7 +226,7 @@ function renderArtist(slug) {
     if (latest) {
         latestHtml = `
         <div class="latest-section">
-            <h2>Latest Release</h2>
+            <h3>Latest Release</h3>
             <div class="latest-card-wrapper">
                 <div class="card">
                     <a href="#/release/${latest.slug}" class="card-link">
@@ -257,13 +257,10 @@ function renderArtist(slug) {
     <div class="artist-profile-header">
         <img src="${artist.pfp}" alt="${artist.name}" class="artist-pfp-large">
         <div class="artist-info">
-            <div class="artist-meta-row">
-                <h1 class="artist-name-large">${esc(artist.name)}</h1>
-                
-            </div>
+            <span class="artist-badge">${releaseCount} Releases</span>
+            <h1 class="artist-name-large">${esc(artist.name)}</h1>
             <p class="artist-bio">${esc(artist.bio || 'No biography available.')}</p>
-            <div class="artist-actions">
-            ${socialBtns}</div>
+            <div class="artist-actions">${socialBtns}</div>
         </div>
     </div>
     ${latestHtml}
@@ -271,11 +268,21 @@ function renderArtist(slug) {
     <div class="grid">${discogHtml}</div>`;
 }
 
-// RESTORED TO ORIGINAL LOGIC FOR ACCURACY
+
+
 function renderRelease(slug) {
     const p = state.releases.find(x => x.slug === slug);
     if (!p) return app.innerHTML = `<p>Release not found.</p>`;
 
+    // FIX: Rétablissement du calcul de la lueur
+    getDominantColor(p.cover).then(color => {
+        const glow = document.getElementById('release-glow');
+        if(glow) {
+            glow.style.setProperty('--glow-color', color);
+            glow.style.opacity = '1';
+        }
+    });
+    
     const mainCredits = fmtCreds(p.credits);
     const desc = esc(p.description).replace(/\n/g, '<br>');
     const firstPlayable = p.tracks.find(t => t.exclusive !== false && t.audio);
@@ -317,6 +324,7 @@ function renderRelease(slug) {
     if (totalMinutes > 0) trackListInfo += `, ${totalMinutes} ${totalMinutes > 1 ? 'minutes' : 'minute'}`;
 
     const html = `
+    <div id="release-glow" class="release-bg-glow"></div>
     <div class="page-header"><a href="#" class="back-link">← Back to releases</a></div>
     <section class="release-hero">
         <img src="${p.cover}" alt="${p.title}">
@@ -352,26 +360,62 @@ function renderRelease(slug) {
     updateUIState();
 }
 
+// --- SECURITY & ADMIN ---
+async function verifyPassword(input) {
+    if (!input) return false;
+    const encoder = new TextEncoder();
+    const data = encoder.encode(input);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex === "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
+}
+
+let adminCurrentView = 'releases';
+
 function renderAdmin() {
+    const getCurrentJson = () => JSON.stringify(adminCurrentView === 'releases' ? state.releases : state.artists, null, 2);
+    const getRepoUrl = () => `https://github.com/dxnel/lyndxn/blob/main/${adminCurrentView}.json`;
+
     app.innerHTML = `
     <div class="page-header"><a href="#" class="back-link">← Back</a></div>
-    <div class="section-header" id="database-manager-label" ><h2>Database Manager</h2></div>
+    <div class="section-header" id="database-manager-label"><h2>Database Manager</h2></div>
     <div class="admin-area">
-        <textarea class="jsonedit" id="je">${esc(JSON.stringify(state.releases, null, 2))}</textarea>
-        <div class="modal-buttons">
-            <button class="btn" id="dl-json">Download</button>
-            <button class="btn secondary" id="save-json">Apply</button>
+        <div class="admin-controls">
+            <div class="admin-tabs">
+                <button class="admin-tab-btn ${adminCurrentView === 'releases' ? 'active' : ''}" id="tab-releases">Releases</button>
+                <button class="admin-tab-btn ${adminCurrentView === 'artists' ? 'active' : ''}" id="tab-artists">Artists</button>
+            </div>
+            <a href="${getRepoUrl()}" target="_blank" class="btn secondary" style="padding: 8px 16px; font-size: 12px;">
+                ${ICONS.globe} View on GitHub
+            </a>
+        </div>
+        <textarea class="jsonedit" id="je">${esc(getCurrentJson())}</textarea>
+        <div class="modal-buttons" style="margin-top: 20px;">
+            <button class="btn secondary" id="dl-json">Download ${capitalize(adminCurrentView)}.json</button>
+            <button class="btn" id="save-json">Test Apply (Memory)</button>
         </div>
     </div>`;
+
+    const updateView = (view) => { adminCurrentView = view; renderAdmin(); };
+    document.getElementById('tab-releases').onclick = () => updateView('releases');
+    document.getElementById('tab-artists').onclick = () => updateView('artists');
+
     document.getElementById('dl-json').onclick = () => {
+        const content = document.getElementById('je').value;
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([document.getElementById('je').value], {type:'application/json'}));
-        a.download = 'releases.json';
+        a.href = URL.createObjectURL(new Blob([content], {type:'application/json'}));
+        a.download = `${adminCurrentView}.json`;
         a.click();
     };
-    document.getElementById('save-json').onclick = () => {
-        try { state.releases = JSON.parse(document.getElementById('je').value); showModal('Success', 'Applied in memory.'); } 
-        catch (e) { showModal('Error', e.message); }
+
+    document.getElementById('save-json').onclick = async () => {
+        try { 
+            const parsed = JSON.parse(document.getElementById('je').value);
+            if(adminCurrentView === 'releases') state.releases = parsed;
+            else state.artists = parsed;
+            await showModal('Success', `Applied to <b>${adminCurrentView}</b> in memory.`);
+        } catch (e) { await showModal('JSON Error', e.message); }
     };
 }
 
@@ -380,7 +424,6 @@ function playTrack(track, project) {
     if (!track.audio) return;
     state.currentProject = project;
     state.trackIndex = track.track_number - 1;
-
     const isSame = decodeURIComponent(audio.src).includes(track.audio.split('/').pop());
     
     playerElements.dock.classList.add('active');
@@ -448,13 +491,12 @@ function updateSeekBg(pct) {
     playerElements.seek.style.background = `linear-gradient(to right, ${cssVars.paper} ${pct}%, ${cssVars.track} ${pct}%)`;
 }
 
-
-// --- MODAL SYSTEM (FIXED) ---
+// --- MODAL ---
 function showModal(title, text, input = false, placeholder = '') {
     modalElements.title.textContent = title;
     modalElements.text.innerHTML = text;
     modalElements.input.classList.toggle('hidden', !input);
-    modalElements.cancel.classList.toggle('hidden', !input); // Cache cancel si c'est juste une alerte
+    modalElements.cancel.classList.toggle('hidden', !input);
     modalElements.submit.textContent = input ? 'Login' : 'OK';
     
     if(input) {
@@ -464,7 +506,6 @@ function showModal(title, text, input = false, placeholder = '') {
     }
     
     modalElements.overlay.classList.remove('hidden');
-    // Petit délai pour permettre au navigateur de rendre le display:flex avant l'opacité
     requestAnimationFrame(() => modalElements.overlay.classList.add('visible'));
 
     return new Promise(resolve => {
@@ -473,121 +514,103 @@ function showModal(title, text, input = false, placeholder = '') {
             modalElements.cancel.onclick = null;
             modalElements.pass.onkeydown = null;
         };
-
         const close = (result) => {
             modalElements.overlay.classList.remove('visible');
-            // On attend la fin de la transition CSS (300ms) avant de cacher
             setTimeout(() => {
                 modalElements.overlay.classList.add('hidden');
                 cleanup();
                 resolve(result);
             }, 300);
         };
-
         modalElements.submit.onclick = () => close(input ? modalElements.pass.value : true);
         modalElements.cancel.onclick = () => close(null);
-        
-        // Touche Entrée dans l'input
         if(input) {
-            modalElements.pass.onkeydown = (e) => {
-                if(e.key === 'Enter') close(modalElements.pass.value);
-            };
+            modalElements.pass.onkeydown = (e) => { if(e.key === 'Enter') close(modalElements.pass.value); };
         }
     });
 }
 
-// --- SECURITY (HASHING) ---
-async function verifyPassword(input) {
-    if (!input) return false;
-    const encoder = new TextEncoder();
-    const data = encoder.encode(input);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    // Hash SHA-256 de "1234"
-    return hashHex === "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
-}
+// --- COLOR EXTRACTION (SMART SAMPLING) ---
+async function getDominantColor(imageUrl) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        // Cache-buster pour éviter les soucis de sécurité navigateur
+        img.src = imageUrl + (imageUrl.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
 
-// --- ADMIN LOGIC (UPDATED) ---
-let adminCurrentView = 'releases'; // 'releases' ou 'artists'
-
-function renderAdmin() {
-    const getCurrentJson = () => JSON.stringify(adminCurrentView === 'releases' ? state.releases : state.artists, null, 2);
-    const getRepoUrl = () => `https://github.com/dxnel/lyndxn/blob/main/${adminCurrentView}.json`;
-
-    app.innerHTML = `
-    <div class="page-header"><a href="#" class="back-link">← Back</a></div>
-    <div class="section-header">
-        <h2>Database Manager</h2>
-    </div>
-    
-    <div class="admin-area">
-        <div class="admin-controls">
-            <div class="admin-tabs">
-                <button class="admin-tab-btn ${adminCurrentView === 'releases' ? 'active' : ''}" id="tab-releases">Releases</button>
-                <button class="admin-tab-btn ${adminCurrentView === 'artists' ? 'active' : ''}" id="tab-artists">Artists</button>
-            </div>
-            <a href="${getRepoUrl()}" target="_blank" class="btn secondary" style="padding: 8px 16px; font-size: 12px;">
-                ${ICONS.globe} View on GitHub
-            </a>
-        </div>
-
-        <textarea class="jsonedit" id="je">${esc(getCurrentJson())}</textarea>
-        
-        <div class="modal-buttons" style="margin-top: 20px;">
-            <button class="btn secondary" id="dl-json">Download</button>
-            <button class="btn" id="save-json">Apply</button>
-        </div>
-    </div>`;
-
-    // Gestion des Onglets
-    const updateView = (view) => {
-        adminCurrentView = view;
-        renderAdmin(); // Re-render pour mettre à jour le contenu et les boutons
-    };
-
-    document.getElementById('tab-releases').onclick = () => updateView('releases');
-    document.getElementById('tab-artists').onclick = () => updateView('artists');
-
-    // Actions
-    document.getElementById('dl-json').onclick = () => {
-        const content = document.getElementById('je').value;
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([content], {type:'application/json'}));
-        a.download = `${adminCurrentView}.json`;
-        a.click();
-    };
-
-    document.getElementById('save-json').onclick = async () => {
-        try { 
-            const parsed = JSON.parse(document.getElementById('je').value);
-            if(adminCurrentView === 'releases') state.releases = parsed;
-            else state.artists = parsed;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
             
-            await showModal('Success', `Successfully applied changes to <b>${adminCurrentView}</b> in local memory.`);
-        } catch (e) { 
-            await showModal('JSON Error', e.message); 
-        }
-    };
+            // On analyse une version réduite (50x50) pour la performance
+            // C'est suffisant pour avoir 2500 points de comparaison
+            canvas.width = 50;
+            canvas.height = 50;
+            ctx.drawImage(img, 0, 0, 50, 50);
+
+            let data;
+            try {
+                data = ctx.getImageData(0, 0, 50, 50).data;
+            } catch (e) {
+                console.warn("CORS Error: Impossible d'analyser les couleurs de l'image.");
+                return resolve('rgba(40, 40, 40, 0.5)'); // Fallback propre
+            }
+
+            let rTotal = 0, gTotal = 0, bTotal = 0, count = 0;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                // alpha = data[i + 3];
+
+                // Calculs simples de luminosité et saturation
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                const saturation = max - min; // Écart entre la couleur la plus forte et la plus faible
+                const brightness = (max + min) / 2;
+
+                // --- LE FILTRE MAGIQUE ---
+                // 1. On ignore ce qui est trop sombre (Noir/Fond) -> brightness < 20
+                // 2. On ignore ce qui est trop clair (Blanc/Texte) -> brightness > 230
+                // 3. On ignore ce qui est gris (Faible saturation) -> saturation < 20
+                if (saturation > 20 && brightness > 20 && brightness < 235) {
+                    rTotal += r;
+                    gTotal += g;
+                    bTotal += b;
+                    count++;
+                }
+            }
+
+            if (count > 0) {
+                // Moyenne des pixels "colorés" uniquement
+                const r = Math.round(rTotal / count);
+                const g = Math.round(gTotal / count);
+                const b = Math.round(bTotal / count);
+                
+                // Petit boost final pour que ça pète à l'écran
+                // On garde la teinte mais on s'assure que ce n'est pas trop sombre
+                const vibrantColor = `rgb(${r}, ${g}, ${b})`;
+                console.log("Smart Color Found:", vibrantColor);
+                resolve(vibrantColor);
+            } else {
+                // Si l'image est vraiment N&B, on renvoie du blanc cassé ou une couleur par défaut
+                console.log("Image appears B&W");
+                resolve('rgba(100, 100, 100, 0.5)'); 
+            }
+        };
+
+        img.onerror = () => resolve('rgba(40, 40, 40, 0.5)');
+    });
 }
 
 // --- INIT LISTENERS ---
-// (Remplace ton ancien listener admin-icon par celui-ci qui est async)
 document.getElementById('admin-icon').onclick = async () => {
     const pass = await showModal('Admin Access', 'Enter secured password:', true, '••••');
-    
-    if (pass === null) return; // Cancelled
-
-    // Petit délai artificiel pour le "loading" effect (optionnel) et pour laisser la modal se fermer proprement
+    if (pass === null) return;
     await wait(200);
-
-    if (await verifyPassword(pass)) {
-        window.location.hash = '#/admin';
-    } else {
-        // La modal précédente est fermée grâce au await dans showModal
-        await showModal('Access Denied', 'The password you entered is incorrect.');
-    }
+    if (await verifyPassword(pass)) window.location.hash = '#/admin';
+    else await showModal('Access Denied', 'The password you entered is incorrect.');
 };
 
 // --- INIT ---
@@ -613,11 +636,6 @@ function init() {
     playerElements.seek.oninput = () => {
         if (audio.duration) audio.currentTime = (playerElements.seek.value / 100) * audio.duration;
         updateSeekBg(playerElements.seek.value);
-    };
-
-    document.getElementById('admin-icon').onclick = async () => {
-        if (await showModal('Admin', 'Enter password:', true) === '1234') window.location.hash = '#/admin';
-        else showModal('Error', 'Wrong password.');
     };
 
     if ('mediaSession' in navigator) {

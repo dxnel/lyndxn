@@ -173,13 +173,48 @@ a.card-link { display: flex; flex-direction: column; gap: 16px; width: 100%; tra
 
 /* --- Artists Circle List (Home) --- */
 .artists-section { margin-bottom: 10px; overflow: hidden; }
-.artists-list { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 10px; }
-.artist-circle-item { display: flex; flex-direction: column; align-items: center; gap: 12px; text-decoration: none; width: 100px; flex-shrink: 0; transition: transform 0.2s; }
+.artists-list {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  padding-bottom: 14px; /* Espace pour la scrollbar */
+  
+  /* Magie pour le Swipe Mobile */
+  scroll-snap-type: x mandatory; 
+  -webkit-overflow-scrolling: touch; /* Fluidité iOS */
+  
+  /* Cache la scrollbar par défaut si pas survolée (optionnel, sinon garde le code suivant) */
+  scrollbar-width: thin; 
+  scrollbar-color: var(--surface-hover) transparent;
+}
+.artist-circle-item { display: flex; flex-direction: column; align-items: center; gap: 12px; 
+  text-decoration: none; width: 100px; flex-shrink: 0; 
+  transition: transform 0.2s; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; gap: 12px; text-decoration: none; width: 100px; flex-shrink: 0; transition: transform 0.2s; }
 .artist-circle-item:hover {  }
 .artist-img-wrap { width: 100px; height: 100px; border-radius: 50%; overflow: hidden; background: var(--surface); border: 2px solid transparent; transition: border-color 0.2s; }
 .artist-circle-item:hover .artist-img-wrap { border-color: var(--paper); }
 .artist-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
 .artist-name { font-size: 14px; font-weight: 500; color: var(--paper); text-align: center; }
+/* --- Scrollbar "Bien Stylée" (Webkit/PC) --- */
+.artists-list::-webkit-scrollbar {
+  height: 4px; /* Très fin et discret */
+}
+
+.artists-list::-webkit-scrollbar-track {
+  background: transparent; /* Fond invisible */
+  margin: 0 20px; /* Marges sur les côtés */
+}
+
+.artists-list::-webkit-scrollbar-thumb {
+  background: var(--surface); /* Couleur sombre au repos */
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.artists-list:hover::-webkit-scrollbar-thumb {
+  background: var(--muted); /* Devient plus clair au survol */
+}
 
 /* ======================= */
 /* =   NEW ARTIST PAGE   = */
@@ -237,7 +272,7 @@ a.card-link { display: flex; flex-direction: column; gap: 16px; width: 100%; tra
 .release-year {
   font-size: 13px;
   color: var(--muted);
-  margin-top: 10px;
+  margin-top: 15px;
   margin-bottom: 15px;
   display: flex;
   align-items: center;
@@ -390,13 +425,25 @@ input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; bac
 #modal-overlay.visible { opacity: 1; pointer-events: auto; }
 
 .modal {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 32px;
-  width: 90%; max-width: 420px;
+  /* Glassmorphism Effect */
+  background: rgba(22, 22, 22, 0.65); /* Noir semi-transparent */
+  backdrop-filter: blur(24px) saturate(180%); /* Le flou magique */
+  -webkit-backdrop-filter: blur(24px) saturate(180%); /* Support Safari/iOS */
+  
+  /* Bordures et Ombres */
+  border: 1px solid rgba(255, 255, 255, 0.08); /* Bordure très subtile */
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5); /* Ombre profonde pour le contraste */
+  
+  /* Layout (inchangé) */
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  width: 90%; 
+  max-width: 420px;
+  
+  /* Animation Desktop */
   transform: scale(0.95) translateY(10px);
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
   opacity: 0;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
 }
 #modal-overlay.visible .modal { transform: scale(1) translateY(0); opacity: 1; }
 
@@ -439,6 +486,34 @@ textarea.jsonedit {
 
 .page-header + .section-header {
   padding-top: 0;
+}
+
+/* --- Release Ambient Glow (FINAL) --- */
+.release-bg-glow {
+  position: fixed; /* Reste fixe même quand on scroll */
+  top: 0;
+  left: 50%; /* Centre technique */
+  transform: translateX(-50%); /* Centre réel */
+  width: 100vw; /* Toute la largeur fenêtre */
+  height: 100vh; /* Toute la hauteur */
+  z-index: -10;
+  pointer-events: none;
+  
+  opacity: 0;
+  transition: opacity 1.5s ease;
+
+  /* Pas de mix-blend-mode pour voir la vraie couleur */
+  background: radial-gradient(
+    circle at 50% 40%, /* Spot centré légèrement vers le haut */
+    var(--glow-color, rgba(40,40,40,0.3)) 0%, 
+    transparent 70%
+  );
+}
+
+/* Important : Assure-toi que le conteneur principal ne cache pas le background */
+.container {
+  position: relative;
+  z-index: 1;
 }
 
 /* Transitions */
@@ -487,7 +562,7 @@ textarea.jsonedit {
     word-wrap: break-word; 
   }
   .release-artist { order: 2; font-size: 16px; margin-bottom: 0; text-align: center; }
-  .release-type { order: 3; text-align: center; margin-top: 14px; margin-bottom: 0px; }
+  .release-type { order: 3; text-align: center; margin-top: 15px; margin-bottom: 0px; }
   .release-year {
     column-gap: 4px;
     order: 4;
@@ -529,4 +604,67 @@ textarea.jsonedit {
   .glass-panel { width: 95%; }
   
   .list-item-date { display: none; }
+
+  /* --- MODALE STYLE "BOTTOM SHEET" (Plus moderne & ergonomique) --- */
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    
+    /* Positionnement en bas */
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    left: 0;
+    margin: 0;
+    
+    /* Style tiroir */
+    border-radius: 24px 24px 0 0; /* Arrondi seulement en haut */
+    padding: 24px 24px 40px 24px; /* Padding bas plus grand (pour la barre home iOS) */
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+    
+    /* Animation différente pour le bottom sheet (glisse du bas) */
+    transform: translateY(100%); 
+  }
+  
+  /* Surcharge l'animation desktop pour qu'elle glisse du bas */
+  #modal-overlay.visible .modal {
+    transform: translateY(0);
+  }
+
+  .modal h2 { font-size: 20px; margin-bottom: 12px; }
+  .modal p { font-size: 14px; margin-bottom: 20px; }
+  
+  #modal-input-area input {
+    padding: 16px; /* Input plus facile à taper au doigt */
+    font-size: 16px; /* Évite le zoom auto sur iPhone */
+  }
+
+  .modal-buttons {
+    width: 100%;
+    justify-content: stretch;
+  }
+  
+  .modal-buttons .btn {
+    flex: 1; /* Boutons pleine largeur, plus facile à toucher */
+    padding: 14px;
+  }
+
+  /* Sur PC : Spot décalé à gauche */
+@media(min-width: 894px) {
+  .release-bg-glow {
+    background: radial-gradient(
+      circle at 25% 50%, 
+      var(--glow-color, rgba(40,40,40,0.3)) 0%, 
+      transparent 60%
+    );
+    opacity: 0.7; /* Un peu transparent pour pas tuer les yeux */
+  }
+  /* Force l'opacité quand JS l'active */
+  .release-bg-glow[style*="opacity: 1"] {
+      opacity: 0.75 !important; 
+  }
+}
 }

@@ -1,5 +1,36 @@
 [
-  { "slug": "yzote", "name": "Yzote", "pfp": "./tracks/covers/placeholder-cover.png", "bio": "test"},
-  { "slug": "w0ndr", "name": "w0ndr", "pfp": "./tracks/covers/placeholder-cover.png", "bio": "test"},
-  { "slug": "lyndxn", "name": "lyndxn", "pfp": "./tracks/covers/placeholder-cover.png", "bio": "test" }
+  { 
+    "slug": "yzote", 
+    "name": "Yzote", 
+    "pfp": "./tracks/covers/placeholder-cover.png", 
+    "bio": "Compositeur et producteur expérimental.",
+    "links": {
+      "main": "https://linktr.ee/yzote",
+      "instagram": "https://instagram.com/yzote",
+      "youtube": "https://youtube.com/yzote",
+      "spotify": "https://spotify.com",
+      "website": null
+    }
+  },
+  { 
+    "slug": "w0ndr", 
+    "name": "w0ndr", 
+    "pfp": "./tracks/covers/placeholder-cover.png", 
+    "bio": "Mélodies atmosphériques et rythmes lo-fi.",
+    "links": {
+      "main": "https://w0ndr.com/listen",
+      "soundcloud": "https://soundcloud.com/w0ndr",
+      "instagram": "https://instagram.com/w0ndr"
+    }
+  },
+  { 
+    "slug": "lyndxn", 
+    "name": "lyndxn", 
+    "pfp": "./tracks/covers/placeholder-cover.png", 
+    "bio": "Rap alternatif et productions sombres.",
+    "links": {
+      "main": null,
+      "youtube": "https://youtube.com/lyndxn"
+    }
+  }
 ]
