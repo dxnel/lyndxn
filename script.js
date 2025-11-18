@@ -11,6 +11,9 @@ const playerElements = {
     durTime: document.getElementById('dur-time'),
     seek: document.getElementById('seek'),
     dlLink: document.getElementById('download-link'),
+    closeBtn: document.getElementById('player-close'),
+    leftArea: document.querySelector('.player-left'),
+    gradientOverlay: document.getElementById('bottom-gradient-overlay')
 };
 const modalElements = {
     overlay: document.getElementById('modal-overlay'),
@@ -674,6 +677,7 @@ function playTrack(track, project) {
     const isSame = decodeURIComponent(audio.src).includes(track.audio.split('/').pop());
     
     playerElements.dock.classList.add('active');
+    playerElements.gradientOverlay.classList.add('active');
     playerElements.cover.src = project.cover;
     playerElements.title.textContent = track.title;
     playerElements.sub.textContent = fmtCreds(track.credits);
@@ -706,9 +710,15 @@ function togglePlay() {
 
 function closePlayer() {
     audio.pause();
+    audio.src = ''; // Reset total du flux audio
+    audio.currentTime = 0;
     state.isPlaying = false;
+    state.currentProject = null; // On oublie le projet en cours
+    state.trackIndex = 0;
+    
     playerElements.dock.classList.remove('active');
-    updateUIState(); 
+    playerElements.gradientOverlay.classList.remove('active');
+    updateUIState();
 }
 
 function updateUIState() {
@@ -845,6 +855,41 @@ function init() {
     document.getElementById('home-link').onclick = (e) => { e.preventDefault(); window.location.hash = ''; };
     
     loadData().then(router);
+
+
+    // --- PLAYER NAVIGATION (Click Cover/Title) ---
+    playerElements.leftArea.onclick = () => {
+        if (state.currentProject) {
+            // Redirection vers la release en cours
+            window.location.hash = `#/release/${state.currentProject.slug}`;
+        }
+    };
+
+    // --- PLAYER CLOSE (Desktop Button) ---
+    if(playerElements.closeBtn) {
+        playerElements.closeBtn.onclick = (e) => {
+            e.stopPropagation(); // Empêche de cliquer à travers
+            closePlayer();
+        };
+    }
+
+    // --- PLAYER CLOSE (Mobile Swipe Down) ---
+    let touchStartY = 0;
+    const dock = playerElements.dock;
+
+    dock.addEventListener('touchstart', (e) => {
+        touchStartY = e.changedTouches[0].screenY;
+    }, {passive: true});
+
+    dock.addEventListener('touchend', (e) => {
+        const touchEndY = e.changedTouches[0].screenY;
+        const diff = touchEndY - touchStartY;
+
+        // Si on a glissé vers le bas de plus de 50px
+        if (diff > 50) {
+            closePlayer();
+        }
+    }, {passive: true});
 }
 
 init();

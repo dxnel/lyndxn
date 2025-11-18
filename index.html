@@ -28,6 +28,7 @@
   </div>
 </header>
 
+
 <main class="container" id="app"></main>
 
 <footer class="site-footer">
@@ -42,6 +43,10 @@
 </footer>
 
 <div id="player-dock" aria-live="polite">
+  <div class="dock-wrapper">
+        <button id="player-close" title="Close Player">
+        <i class="fi fi-sr-cross-small"></i>
+    </button>
   <div class="glass-panel">
     <div class="player-inner">
       <div class="player-left">
@@ -79,6 +84,7 @@
       </div>
     </div>
   </div>
+  </div>
 </div>
 
 <div id="modal-overlay" class="hidden">
@@ -94,6 +100,7 @@
     </div>
   </div>
 </div>
+<div id="bottom-gradient-overlay"></div>
 
 <script src="./script.js?v=1.0"></script>
 </body>
