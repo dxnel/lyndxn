@@ -26,7 +26,7 @@ const modalElements = {
     cancel: document.getElementById('modal-cancel'),
 };
 
-let state = { releases: [], artists: [], currentProject: null, trackIndex: 0, isPlaying: false, sort: 'date', view: 'grid', grouped: false, exclusiveOnly: false, isAdmin: false };
+let state = { releases: [], artists: [], currentProject: null, trackIndex: 0, countdownInterval: null, isPlaying: false, sort: 'date', view: 'grid', grouped: false, exclusiveOnly: false, isAdmin: false };
 const audio = new Audio();
 let cssVars = { paper: '#ededed', track: '#444' };
 
@@ -40,18 +40,20 @@ const ICONS = {
     link: '<i class="fi fi-sr-square-up-right"></i>',
     explicit: '<i class="fi fi-sr-square-e"></i>',
     exclusive: '<i class="fi fi-sr-star"></i>',
-    lock: '<i class="fi fi-sr-lock"></i>',        // NOUVEAU
-    unlock: '<i class="fi fi-sr-unlock"></i>',    // NOUVEAU
+    lock: '<i class="fi fi-sr-lock"></i>',
+    unlock: '<i class="fi fi-sr-unlock"></i>',
     spotify: '<i class="fi fi-sr-play-alt"></i>', 
     globe: '<i class="fi fi-sr-globe"></i>',
     instagram: '<i class="fi fi-sr-camera"></i>',
     youtube: '<i class="fi fi-sr-play-alt"></i>',
     soundcloud: '<i class="fi fi-sr-cloud"></i>',
     website: '<i class="fi fi-sr-globe"></i>',
+    clock: '<i class="fi fi-sr-clock"></i>'
 };
 
 const ADMIN_HASH = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"; // "1234"
 
+// CORRECTION ICI : Utilisation des entités HTML pour éviter les bugs de syntaxe
 const esc = s => s ? s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) : '';
 const fmtTime = s => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 const fmtDate = d => { try { const x = new Date(d); return `${String(x.getDate()).padStart(2,'0')}-${String(x.getMonth()+1).padStart(2,'0')}-${x.getFullYear()}`; } catch { return d; }};
@@ -80,16 +82,21 @@ function createBadge(item, context = 'default', parent = null) {
     let h = '';
     if (item.explicit) h += `<div class="badge explicit" title="Explicit">${ICONS.explicit}</div>`;
     
-    // Logique Badge Locked / Exclusive
     let showExcl = item.exclusive !== false;
     if (context === 'tracklist' && parent && parent.exclusive === true) showExcl = false;
 
-    // Si le morceau a un mot de passe et n'est PAS débloqué, on affiche le cadenas
+    // LOGIQUE UNRELEASED (Prioritaire sur Exclusive)
+    if (item.unreleased) {
+        h += `<div class="badge unreleased" title="Coming Soon">${ICONS.clock}</div>`;
+        showExcl = false; 
+    }
+
+    // ... (logique locked existante) ...
     if (context === 'tracklist' && item.password_hash && parent) {
         const unlocked = isTrackUnlocked(parent.slug, item.track_number);
         if (!unlocked) {
              h += `<div class="badge locked" title="Protected">${ICONS.lock}</div>`;
-             showExcl = false; // On cache l'étoile si c'est locké (priorité au cadenas)
+             showExcl = false;
         }
     }
 
@@ -109,25 +116,23 @@ async function loadData() {
     } catch (e) { console.error(e); app.innerHTML = `<p>Error loading data.</p>`; }
 }
 
+// --- ROUTER & TRANSITIONS ---
 async function transition(fn) {
-    // 1. On commence l'animation de sortie (fade out)
+    // STOP LE COUNTDOWN S'IL EXISTE
+    if (state.countdownInterval) clearInterval(state.countdownInterval);
+
     app.classList.add('page-exit');
     await wait(300);
     
-    // 2. On injecte le nouveau contenu
     fn();
     
-    // --- FIX SCROLL RADICAL ---
-    // On force le navigateur à remonter tout en haut INSTANTANÉMENT
-    // avant d'afficher la nouvelle page.
     window.scrollTo({ top: 0, behavior: 'instant' }); 
-    document.body.scrollTop = 0; // Sécurité pour Safari Mobile
-    document.documentElement.scrollTop = 0; // Sécurité pour Chrome/Firefox
+    document.body.scrollTop = 0; 
+    document.documentElement.scrollTop = 0; 
     
-    // 3. On lance l'animation d'entrée (fade in)
     app.classList.remove('page-exit');
     app.classList.add('page-enter');
-    void app.offsetWidth; // Force le navigateur à calculer le CSS (reflow)
+    void app.offsetWidth;
     app.classList.remove('page-enter');
 }
 
@@ -304,16 +309,22 @@ function renderArtist(slug) {
 
     let latestHtml = '';
     if (latest) {
+        // Logic Texte
+        const sectionTitle = latest.unreleased ? 'Upcoming Release' : 'Latest Release';
+        const yearText = latest.unreleased 
+            ? `Coming ${new Date(latest.date).getFullYear()}` 
+            : `${new Date(latest.date).getFullYear()}`;
+
         latestHtml = `
         <div class="latest-section">
-            <h3>Latest Release</h3>
+            <h2>${sectionTitle}</h2>
             <div class="latest-card-wrapper">
                 <div class="card">
                     <a href="#/release/${latest.slug}" class="card-link">
                         <div class="card-image-wrap"><img src="${latest.cover}"></div>
                         <div class="card-text">
                             <div class="card-title-row"><div class="title">${esc(latest.title)}</div>${createBadge(latest)}</div>
-                            <div class="meta"><span>${new Date(latest.date).getFullYear()}</span><span class="meta-dot">●</span><span>${esc(latest.type)}</span></div>
+                            <div class="meta"><span>${yearText}</span><span class="meta-dot">●</span><span>${capitalize(latest.type)}</span></div>
                         </div>
                     </a>
                 </div>
@@ -337,7 +348,6 @@ function renderArtist(slug) {
     <div class="artist-profile-header">
         <img src="${artist.pfp}" alt="${artist.name}" class="artist-pfp-large">
         <div class="artist-info">
-            <span class="artist-badge">${releaseCount} Releases</span>
             <h1 class="artist-name-large">${esc(artist.name)}</h1>
             <p class="artist-bio">${esc(artist.bio || 'No biography available.')}</p>
             <div class="artist-actions">${socialBtns}</div>
@@ -348,63 +358,58 @@ function renderArtist(slug) {
     <div class="grid">${discogHtml}</div>`;
 }
 
-// --- COLOR EXTRACTION (Smart) ---
-async function getDominantColor(imageUrl) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.src = imageUrl + (imageUrl.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 50; canvas.height = 50;
-            ctx.drawImage(img, 0, 0, 50, 50);
-            let data;
-            try { data = ctx.getImageData(0, 0, 50, 50).data; } catch (e) { return resolve('rgba(40, 40, 40, 0.5)'); }
-            let rTotal = 0, gTotal = 0, bTotal = 0, count = 0;
-            for (let i = 0; i < data.length; i += 4) {
-                const r = data[i], g = data[i+1], b = data[i+2];
-                const max = Math.max(r, g, b), min = Math.min(r, g, b);
-                const sat = max - min, bri = (max + min) / 2;
-                if (sat > 20 && bri > 20 && bri < 235) { rTotal+=r; gTotal+=g; bTotal+=b; count++; }
-            }
-            if (count > 0) resolve(`rgb(${Math.round(rTotal/count)}, ${Math.round(gTotal/count)}, ${Math.round(bTotal/count)})`);
-            else resolve('rgba(100, 100, 100, 0.5)'); 
-        };
-        img.onerror = () => resolve('rgba(40, 40, 40, 0.5)');
-    });
-}
+
 
 function renderRelease(slug) {
     const p = state.releases.find(x => x.slug === slug);
     if (!p) return app.innerHTML = `<p>Release not found.</p>`;
 
-
     
     const mainCredits = fmtCreds(p.credits);
     const desc = esc(p.description).replace(/\n/g, '<br>');
-    const firstPlayable = p.tracks.find(t => t.exclusive !== false && t.audio);
     
-    // Logic Bouton principal
-    let buttonHtml = '';
-    if (p.exclusive === true) {
-        if (firstPlayable) {
-            // Check si le premier morceau est locké
-            const isFirstLocked = firstPlayable.password_hash && !isTrackUnlocked(p.slug, firstPlayable.track_number);
-            
-            if(isFirstLocked) {
-                buttonHtml = `<button class="btn" disabled>${ICONS.lock} Protected</button>`;
-            } else {
-                buttonHtml = `<button class="btn" id="play-rel-btn">${ICONS.play} Play</button>
-                ${p.type === 'single' ? `<a class="btn secondary" href="${firstPlayable.audio}" download="${p.slug}.mp3">Download</a>` : ''}`;
-            }
-        } else {
-            buttonHtml = `<button class="btn" disabled>Not Available</button>`;
+    // --- LOGIQUE BOUTONS & TYPE ---
+    let typeText = capitalize(p.type);
+    let yearText = `${new Date(p.date).getFullYear()}`;
+    let actionButtonsHtml = '';
+    let countdownHtml = '';
+    let startCountdownTask = null; // Pour lancer le timer APRES le rendu
+
+    // SI UNRELEASED
+    if (p.unreleased) {
+        typeText = `Unreleased ${typeText}`;
+        yearText = `Coming ${yearText}`;
+        
+        // Bouton Pre-save
+        const link = p.link || '#';
+        actionButtonsHtml = `<a class="btn" href="${link}" target="_blank">${ICONS.link} Pre-save</a>`;
+        
+        // Countdown Logic
+        const releaseDate = new Date(p.date).getTime();
+        const now = new Date().getTime();
+        
+        if (releaseDate > now) {
+            countdownHtml = `<div id="release-countdown" class="countdown-wrapper">Loading...</div>`;
+            // CORRECTION : On prépare la tâche pour plus tard
+            startCountdownTask = () => startCountdown(releaseDate);
         }
-    } else {
-        // Priorité : 1. Lien de l'album -> 2. Lien du premier son -> 3. Rien (#)
+    } 
+    // SI EXCLUSIF (Logique existante)
+    else if (p.exclusive === true) {
+        const firstPlayable = p.tracks.find(t => t.exclusive !== false && t.audio);
+        if (firstPlayable) {
+             const isFirstLocked = firstPlayable.password_hash && !isTrackUnlocked(p.slug, firstPlayable.track_number);
+             if(isFirstLocked) actionButtonsHtml = `<button class="btn" disabled>${ICONS.lock} Protected</button>`;
+             else actionButtonsHtml = `<button class="btn" id="play-rel-btn">${ICONS.play} Play</button>
+                ${p.type === 'single' ? `<a class="btn secondary" href="${firstPlayable.audio}" download="${p.slug}.mp3">Download</a>` : ''}`;
+        } else {
+            actionButtonsHtml = `<button class="btn" disabled>Not Available</button>`;
+        }
+    } 
+    // SI STANDARD
+    else {
         const streamUrl = p.link || p.tracks[0]?.stream_url || '#';
-        buttonHtml = `<a class="btn" href="${streamUrl}" target="_blank">${ICONS.link} Listen Now</a>`;
+        actionButtonsHtml = `<a class="btn" href="${streamUrl}" target="_blank">${ICONS.link} Listen Now</a>`;
     }
 
     const tracksHtml = p.tracks.map((t, i) => {
@@ -453,11 +458,16 @@ function renderRelease(slug) {
     <section class="release-hero">
         <img src="${p.cover}" alt="${p.title}">
         <div class="release-details">
-            <div class="release-type">${capitalize(p.type)}</div>
-            <h1 class="release-title">${esc(p.title)}</h1>
+            <div class="release-type">${typeText}</div> <h1 class="release-title">${esc(p.title)}</h1>
             <div class="release-artist">${esc(mainCredits)}</div>
-            <div class="release-year"><span>${esc(p.genre || 'Single')}</span><span class="meta-dot">●</span><span>${new Date(p.date).getFullYear()}</span></div>
-            <div class="release-actions">${buttonHtml}</div>
+            
+            <div class="release-year"><span>${esc(p.genre || 'Single')}</span><span class="meta-dot">●</span><span>${yearText}</span></div>
+            
+            <div class="release-actions">
+                ${actionButtonsHtml}
+                ${countdownHtml}
+            </div>
+            
             <p class="release-desc">${desc}</p>
             <div class="track-list-container">
                 <div class="track-list" id="track-list">${tracksHtml}</div>
@@ -473,6 +483,11 @@ function renderRelease(slug) {
     </section>`;
 
     app.innerHTML = html;
+
+    // Lancer le countdown maintenant que le HTML existe
+    if (startCountdownTask) {
+        setTimeout(startCountdownTask, 0);
+    }
 
     // Listener Bouton Principal (Play Album)
     const playBtn = document.getElementById('play-rel-btn');
@@ -508,9 +523,32 @@ function renderRelease(slug) {
             return;
         }
 
-        // Gestion Play Normal
+        // LIENS
+        if (e.target.closest('a')) return;
+
+        // LIGNE (Si Locked, on lance le prompt aussi)
         const item = e.target.closest('.track-item');
-        if (item && item.dataset.playable === 'true') {
+        if (!item) return;
+
+        // Si la ligne est LOCKED, on lance le prompt comme le bouton
+        if (item.classList.contains('locked')) {
+            const t = p.tracks[item.dataset.idx];
+            const pass = await showModal('Protected Track', `Enter password for <b>"${t.title}"</b>:`, true, '••••');
+            if (pass) {
+                await wait(300); 
+                if (await verifyPassword(pass, t.password_hash)) {
+                    unlockTrackLocal(p.slug, t.track_number);
+                    await showModal('Unlocked', 'Track unlocked successfully.');
+                    renderRelease(slug); 
+                } else {
+                    await showModal('Error', 'Incorrect password.');
+                }
+            }
+            return;
+        }
+        
+        // Si Jouable normal
+        if (item.dataset.playable === 'true') {
             playTrack(p.tracks[item.dataset.idx], p);
         }
     });
@@ -633,7 +671,7 @@ function renderAdmin() {
         <textarea class="jsonedit" id="je">${esc(getCurrentJson())}</textarea>
         <div class="modal-buttons" style="margin-top: 20px;">
             <button class="btn secondary" id="dl-json">Download ${capitalize(adminCurrentView)}.json</button>
-            <button class="btn" id="save-json">Apply</button>
+            <button class="btn" id="save-json">Test Apply (Memory)</button>
         </div>
     </div>`;
 
@@ -800,6 +838,40 @@ function showModal(title, text, input = false, placeholder = '') {
             modalElements.pass.onkeydown = (e) => { if(e.key === 'Enter') close(modalElements.pass.value); };
         }
     });
+}
+
+function startCountdown(targetDate) {
+    // Fonction de mise à jour
+    const update = () => {
+        const now = new Date().getTime();
+        const distance = targetDate - now;
+
+        const el = document.getElementById('release-countdown');
+        if (!el) return; // Si on a changé de page entre temps
+
+        if (distance < 0) {
+            // C'est sorti !
+            clearInterval(state.countdownInterval);
+            el.style.display = 'none'; // On cache le countdown
+            // Optionnel : recharger la page pour afficher "Listen Now" si tu veux
+            return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        el.innerHTML = `
+            <span class="countdown-part">${days}</span><span class="countdown-sep">d</span>
+            <span class="countdown-part">${hours}</span><span class="countdown-sep">h</span>
+            <span class="countdown-part">${minutes}</span><span class="countdown-sep">m</span>
+            <span class="countdown-part">${seconds}</span><span class="countdown-sep">s</span>
+        `;
+    };
+
+    update(); // Appel immédiat
+    state.countdownInterval = setInterval(update, 1000); // Puis chaque seconde
 }
 
 // --- INIT LISTENERS ---
