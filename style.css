@@ -140,6 +140,37 @@ h2{
 .section-header h2 { margin: 0; font-size: 24px; letter-spacing: -0.5px; font-weight: 700; color: var(--paper); }
 .home-header { display: flex; flex-direction: column; gap: 16px; }
 .header-top-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+/* --- HEADER BOTTOM ROW (Tabs + Filtres) --- */
+.header-bottom-row {
+  display: flex;
+  flex-direction: row;       /* Force l'horizontale */
+  align-items: center;
+  justify-content: flex-start; /* Aligne tout au début (gauche) */
+  width: 100%;
+  gap: 16px; /* Espace fixe entre les Tabs et les Boutons */
+}
+
+/* 1. Les Tabs (Recent, Name...) */
+.header-bottom-row .tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto; /* Scroll si ça dépasse sur mobile */
+  flex: 0 1 auto; /* Prend juste la place qu'il faut, peut rétrécir */
+  margin: 0;
+  
+  /* Cache la scrollbar */
+  scrollbar-width: none; 
+  -ms-overflow-style: none; 
+}
+.header-bottom-row .tabs::-webkit-scrollbar { display: none; }
+
+/* 2. Les Boutons ronds (User, Star) */
+.header-bottom-row .control-group {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0; /* Ne jamais écraser ces boutons */
+  margin-left: 0; /* Collé à l'élément précédent, pas poussé à droite */
+}
 .header-top-row h2 { margin: 0; font-size: 24px; letter-spacing: -0.5px; font-weight: 700; color: var(--paper); }
 .library-controls { display: flex; gap: 20px; }
 .control-group { display: flex; gap: 8px; }
@@ -175,7 +206,7 @@ a.card-link { display: flex; flex-direction: column; gap: 16px; width: 100%; tra
 .list-date-row { font-size: 13px; color: var(--muted); width: auto; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 
 /* --- Artists Circle List (Home) --- */
-.artists-section { margin-bottom: 10px; overflow: hidden; }
+.artists-section { margin-bottom: 0px; overflow: hidden; }
 .artists-list {
   display: flex;
   gap: 24px;
@@ -285,7 +316,6 @@ a.card-link { display: flex; flex-direction: column; gap: 16px; width: 100%; tra
 .release-desc {
   color: #ccc;
   line-height: 1.7;
-  margin-bottom: 20px;
   font-size: 13px;
   max-width: 500px;
 }
@@ -510,9 +540,11 @@ textarea.jsonedit {
 @media(max-width: 893px) {
   .container { padding: 0 18px; }
   .home-header { gap: 16px; }
-  .tabs { flex-basis: 100%; order: 3; }
-  .library-controls { order: 2; }
+  .tabs { flex-basis: 100%; order: 2; }
+  .control-group { order: 3; }
+  .library-controls { order: 3; }
   .header-top-row { gap: 10px; }
+  
 
   /* Grid Releases */
   .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 24px; }

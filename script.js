@@ -97,7 +97,6 @@ async function router() {
     });
 }
 
-// --- RENDERERS ---
 function renderHome() {
     const artistsHtml = state.artists.map(a => `
         <a href="#/artist/${a.slug}" class="artist-circle-item">
@@ -108,28 +107,33 @@ function renderHome() {
     app.innerHTML = `
     <div class="section-header"><h2>Artists</h2></div>
     <div class="artists-section"><div class="artists-list">${artistsHtml}</div></div>
+    
     <div class="home-header">
         <div class="header-top-row">
             <h2>Releases</h2>
-            <div class="library-controls">
-                <div class="control-group">
-                    <button class="view-btn" id="grp-btn" title="Group">${ICONS.group}</button>
-                    <button class="view-btn" id="excl-btn" title="Exclusive">${ICONS.exclusive}</button>
-                </div>
-                <div class="control-group">
-                    <button class="view-btn ${state.view === 'grid' ? 'active' : ''}" data-v="grid">${ICONS.grid}</button>
-                    <button class="view-btn ${state.view === 'list' ? 'active' : ''}" data-v="list">${ICONS.list}</button>
-                </div>
+            <div class="control-group">
+                <button class="view-btn ${state.view === 'grid' ? 'active' : ''}" data-v="grid">${ICONS.grid}</button>
+                <button class="view-btn ${state.view === 'list' ? 'active' : ''}" data-v="list">${ICONS.list}</button>
             </div>
         </div>
-        <div class="tabs" id="sort-tabs">
-            <button class="tab-btn active" data-s="date">Recent</button>
-            <button class="tab-btn" data-s="title">Name (A-Z)</button>
-            <button class="tab-btn" data-s="artist">Artist (A-Z)</button>
+
+        <div class="header-bottom-row">
+            <div class="tabs" id="sort-tabs">
+                <button class="tab-btn active" data-s="date">Recent</button>
+                <button class="tab-btn" data-s="title">Name</button>
+                <button class="tab-btn" data-s="artist">Artist</button>
+            </div>
+            
+            <div class="control-group">
+                <button class="view-btn" id="grp-btn" title="Group">${ICONS.group}</button>
+                <button class="view-btn" id="excl-btn" title="Exclusive">${ICONS.exclusive}</button>
+            </div>
         </div>
     </div>
+    
     <div class="grid-container" id="grid-ctn"></div>`;
 
+    // ... (Garde tes Event Listeners inchangés en dessous) ...
     document.getElementById('sort-tabs').onclick = e => {
         if (!e.target.closest('.tab-btn')) return;
         state.sort = e.target.closest('.tab-btn').dataset.s;
@@ -158,7 +162,6 @@ function renderHome() {
     grid.classList.add('grid-page-enter');
     setTimeout(() => grid.classList.remove('grid-page-enter'), 50);
 }
-
 function renderGrid() {
     const ctn = document.getElementById('grid-ctn');
     if (!ctn) return;
