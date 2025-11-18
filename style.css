@@ -576,6 +576,7 @@ textarea.jsonedit {
     padding: 0 10px; 
     word-wrap: break-word; 
   }
+  .artists-list { justify-content: center; column-gap:16px}
   .release-artist { order: 2; font-size: 16px; margin-bottom: 0; text-align: center; }
   .release-type { order: 3; text-align: center; margin-top: 15px; margin-bottom: 0px; }
   .release-year {
