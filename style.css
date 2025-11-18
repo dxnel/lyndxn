@@ -386,7 +386,7 @@ a.card-link {
 /* ======================= */
 
 /* --- Section Artistes (Home) --- */
-.artists-section { margin-bottom: 10px; overflow: hidden; }
+.artists-section {  overflow: hidden; }
 .artists-list {
   display: flex;
   gap: 24px;
@@ -423,14 +423,15 @@ a.card-link {
   text-align: center;
 }
 
-/* --- Page Profil Artiste --- */
 .artist-profile-section {
   display: flex;
   flex-direction: column;
   gap: 40px;
+  padding-top: 20px; /* AJOUT : Padding pour l'espace au-dessus */
   padding-bottom: 80px;
   animation: fadeIn 0.4s ease;
 }
+
 .artist-hero { display: flex; align-items: center; gap: 40px; }
 .artist-pfp-hero {
   width: 180px;
@@ -446,14 +447,20 @@ a.card-link {
   border: 1px solid var(--border);
 }
 
-.artist-details-hero { display: flex; flex-direction: column; gap: 12px; }
+.artist-details-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Réduit l'espace entre le titre et la bio */
+  justify-content: center; /* NOUVEAU : Centre le contenu verticalement dans le bloc */
+}
+
 .artist-name-hero {
   font-size: 4em;
   font-weight: 700;
   letter-spacing: -2px;
   margin: 0;
   color: var(--paper);
-  line-height: 1;
+  line-height: 1.1; /* AJOUT : Laisse un peu d'air pour le centrage */
   margin-left: -4px;
 }
 .artist-bio-hero {
@@ -871,8 +878,24 @@ textarea.jsonedit {
   .header-top-row { gap: 10px; }
 
   /* Artiste */
-  .artist-hero { flex-direction: column; text-align: center; gap: 24px; }
-  .artist-pfp-hero { width: 120px; height: 120px; }
+  .artist-hero { 
+  display: flex; 
+  align-items: center; 
+  gap: 40px; 
+  padding-top: 32px; /* Ajouté pour un meilleur espacement en haut */
+}
+
+.artist-pfp-hero {
+  width: 140px; /* Taille légèrement réduite pour l'équilibre */
+  height: 140px;
+  /* La solution pour la forme est d'appliquer la bordure à l'image */
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface); 
+  box-shadow: var(--shadow-release-hero);
+  flex-shrink: 0;
+  border: 4px solid var(--surface); /* AJOUT: Bordure pour encadrer le noir/couverture */
+}
   .artist-name-hero { font-size: 2.5em; letter-spacing: -1px; margin-left: 0; }
   .artist-bio-hero { font-size: 1em; text-align: center; }
   
