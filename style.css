@@ -509,7 +509,7 @@ a.card-link {
   display: flex;
   justify-content: space-between; /* Desktop: "1 song, 23 min" à GAUCHE */
   align-items: center;
-  padding: 16px 10px;
+  padding: 16px 0px;
   font-size: 13px;
   color: var(--muted);
 }
@@ -1107,6 +1107,7 @@ textarea.jsonedit:focus {
   .release-desc { 
     order: 6;
     font-size: 14px; 
+    margin-bottom:10px;
     max-width: none; 
     text-align: left;
   }
@@ -1197,6 +1198,7 @@ textarea.jsonedit:focus {
     
     /* On ajoute le padding qui était sur .track-list-copyright */
     padding-top: 16px;
+    padding-left:0px
   }
   .track-list-info {
     font-style: normal;
