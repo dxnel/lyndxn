@@ -386,7 +386,7 @@ a.card-link {
 /* ======================= */
 
 /* --- Section Artistes (Home) --- */
-.artists-section {  overflow: hidden; }
+.artists-section { margin-bottom: 10px; overflow: hidden; }
 .artists-list {
   display: flex;
   gap: 24px;
@@ -884,7 +884,7 @@ textarea.jsonedit {
   gap: 40px; 
   padding-top: 32px; /* Ajouté pour un meilleur espacement en haut */
 }
-
+.artists-section { margin-bottom: 0px; overflow: hidden; }
 .artist-pfp-hero {
   width: 140px; /* Taille légèrement réduite pour l'équilibre */
   height: 140px;
