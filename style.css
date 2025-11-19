@@ -562,7 +562,7 @@ textarea.jsonedit { width: 100%; height: 400px; font-family: 'JetBrains Mono', m
   .list-item-date { display: none; }
   
   #player-close { display: none !important; } /* Pas de bouton fermer sur mobile (Swipe) */
-  .track-play-button { opacity: 0.8; } /* Toujours visible si pas de souris */
+  .track-play-button { opacity: 0; } /* Toujours visible si pas de souris */
 
   /* MODALE MOBILE (BOTTOM SHEET) */
   .modal {
