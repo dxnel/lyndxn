@@ -75,6 +75,23 @@ body {
 a { color: inherit; text-decoration: none; transition: color 0.2s; }
 img { display: block; }
 
+
+#home-link {
+  color: var(--muted); /* Gris par défaut (comme l'icône admin) */
+  display: flex;       /* Pour bien centrer le SVG */
+  align-items: center;
+  transition: color 0.2s ease; /* Transition fluide */
+}
+
+#home-link:hover {
+  color: var(--accent); /* Blanc au survol */
+}
+
+/* Sécurité : force le SVG à suivre la couleur du texte */
+#svg-brand {
+  fill: currentColor;
+}
+
 /* Fix Icônes */
 i[class^="fi"] {
   display: inline-flex !important;
@@ -120,7 +137,7 @@ i[class^="fi"] {
 .nav-right div:hover { color: var(--accent); }
 
 /* FOOTER */
-.site-footer { margin-top: 80px; border-top: 1px solid var(--border); padding: 40px 0; }
+.site-footer { margin-top: 80px; border-top: 1px solid var(--border); padding: 20px 0; }
 .footer-inner { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; }
 .socials { display: flex; gap: 20px; }
 .social-link:hover { color: var(--paper); }
