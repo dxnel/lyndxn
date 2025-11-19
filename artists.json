@@ -1,15 +1,12 @@
 [
   { 
-    "slug": "yzote", 
-    "name": "Yzote", 
-    "pfp": "./tracks/covers/yzotePP-1500.png", 
-    "bio": "Compositeur et producteur expérimental.",
+    "slug": "lyndxn", 
+    "name": "lyndxn", 
+    "pfp": "./tracks/covers/placeholder-cover.png", 
+    "bio": "Rap alternatif et productions sombres.",
     "links": {
-      "main": "https://linktr.ee/yzote",
-      "instagram": "https://instagram.com/yzote",
-      "youtube": "https://youtube.com/yzote",
-      "spotify": "https://spotify.com",
-      "website": null
+      "main": null,
+      "youtube": "https://youtube.com/lyndxn"
     }
   },
   { 
@@ -24,13 +21,18 @@
     }
   },
   { 
-    "slug": "lyndxn", 
-    "name": "lyndxn", 
-    "pfp": "./tracks/covers/placeholder-cover.png", 
-    "bio": "Rap alternatif et productions sombres.",
+    "slug": "yzote", 
+    "name": "Yzote", 
+    "pfp": "./tracks/covers/yzotePP-1500.png", 
+    "bio": "Compositeur et producteur expérimental.",
     "links": {
-      "main": null,
-      "youtube": "https://youtube.com/lyndxn"
+      "main": "https://linktr.ee/yzote",
+      "instagram": "https://instagram.com/yzote",
+      "youtube": "https://youtube.com/yzote",
+      "spotify": "https://spotify.com",
+      "website": null
     }
   }
+  
+  
 ]

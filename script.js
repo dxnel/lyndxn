@@ -377,7 +377,7 @@ function renderRelease(slug) {
 
     // SI UNRELEASED
     if (p.unreleased) {
-        typeText = `Unreleased ${typeText}`;
+        typeText = `Upcoming ${typeText}`;
         yearText = `Coming ${yearText}`;
         
         // Bouton Pre-save
