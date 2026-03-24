@@ -52,5 +52,32 @@
         "stream_url": "https://open.spotify.com/track/6Gh8wGnEP1EnwuIWmtwFnm?si=e0e4041217964041"
       }
     ]
+  },
+  {
+    "slug": "w0ndr-notforme",
+    "title": "Not For Me",
+    "type": "single",
+    "credits": ["w0ndr"],
+    "date": "2026-04-17",
+    "genre": "Alternative/Indie",
+    "cover": "./tracks/covers/placeholder-cover.png",
+    "description": "Latest single from w0ndr.",
+    "link": "https://too.fm/w0ndr-notforme",
+    "copyright": "2026 GATO",
+    "unreleased": true,
+    "explicit": true,
+    "exclusive": false,
+    "tracks": [
+      {
+        "track_number": 1,
+        "title": "Not For Me",
+        "credits": ["w0ndr"],
+        "audio": null,
+        "duration_seconds": null,
+        "exclusive": false,
+        "explicit": true,
+        "stream_url": null
+      }
+    ]
   }
 ]
