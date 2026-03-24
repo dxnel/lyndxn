@@ -79,5 +79,32 @@
         "stream_url": null
       }
     ]
+  },
+  {
+    "slug": "lyndxn-clés",
+    "title": "Clés -- Demo 12-20",
+    "type": "single",
+    "credits": ["lyndxn"],
+    "date": "2025-12-20",
+    "genre": "Alternative/Indie",
+    "cover": "./tracks/covers/GATO_LogoBlack-1000.png",
+    "description": "Latest single from lyndxn.",
+    "link": "https://too.fm/lyndxn-clés",
+    "copyright": "2025 GATO",
+    "unreleased": false,
+    "explicit": true,
+    "exclusive": false,
+    "tracks": [
+      {
+        "track_number": 1,
+        "title": "Clés -- Demo",
+        "credits": ["lyndxn"],
+        "audio": "./tracks/audio/lyndxn_clés.wav",
+        "duration_seconds": 149,
+        "exclusive": true,
+        "explicit": true,
+        "stream_url": null
+      }
+    ]
   }
 ]
