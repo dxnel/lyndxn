@@ -99,7 +99,7 @@
         "track_number": 1,
         "title": "Clés -- Demo",
         "credits": ["lyndxn"],
-        "audio": "./tracks/audio/lyndxn_clés.wav",
+        "audio": "./tracks/audio/lyndxn_cles.wav",
         "duration_seconds": 149,
         "exclusive": true,
         "explicit": true,
