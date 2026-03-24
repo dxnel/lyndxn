@@ -3,7 +3,7 @@
     "slug": "lyndxn", 
     "name": "lyndxn", 
     "pfp": "./tracks/covers/placeholder-cover.png", 
-    "bio": "Rap alternatif et productions sombres.",
+    "bio": "TBA",
     "links": {
       "main": null,
       "youtube": "https://youtube.com/lyndxn"
@@ -12,12 +12,14 @@
   { 
     "slug": "w0ndr", 
     "name": "w0ndr", 
-    "pfp": "./tracks/covers/placeholder-cover.png", 
-    "bio": "Mélodies atmosphériques et rythmes lo-fi.",
+    "pfp": "./tracks/covers/w0ndr-pp.jpg", 
+    "bio": "Indie-pop artist based in Switzerland.",
     "links": {
-      "main": "https://w0ndr.com/listen",
-      "soundcloud": "https://soundcloud.com/w0ndr",
-      "instagram": "https://instagram.com/w0ndr"
+      "main": "https://linktr.ee/w0ndr_",
+       "spotify": "https://open.spotify.com/artist/4vbdhbEw5bEJScPwjewhzM?si=i_RTPTdnSmmkNJ8fekbB_w",
+      "youtube": "https://youtube.com/@w0ndr_off",
+      "soundcloud": "https://soundcloud.com/w0ndrmusic",
+      "instagram": "https://instagram.com/w0ndr_"
     }
   },
   { 
