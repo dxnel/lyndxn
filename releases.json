@@ -93,7 +93,7 @@
     "copyright": "2025 GATO",
     "unreleased": false,
     "explicit": true,
-    "exclusive": false,
+    "exclusive": true,
     "tracks": [
       {
         "track_number": 1,
